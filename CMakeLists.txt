@@ -36,6 +36,7 @@ elseif(AFV_NATIVE_AUDIO_LIBRARY MATCHES "soundio")
 endif()
 
 set(AFV_NATIVE_HEADERS
+        include/afv-native/atcClient.h
 		include/afv-native/Client.h
 		include/afv-native/event.h
 		include/afv-native/Log.h
@@ -121,6 +122,7 @@ set(AFV_NATIVE_SOURCES
 		src/audio/VHFFilterSource.cpp
 		src/audio/WavFile.cpp
 		src/audio/WavSampleStorage.cpp
+        src/core/atcClient.cpp
 		src/core/Client.cpp
 		src/core/Log.cpp
 		src/cryptodto/Channel.cpp

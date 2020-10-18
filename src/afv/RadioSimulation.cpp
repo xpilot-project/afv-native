@@ -123,6 +123,14 @@ void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
     }
 }
 
+/** Audio enters here from the Codec Compressor before being sent out on to the network.
+ *
+ *
+ *
+ *
+ */
+
+
 void RadioSimulation::processCompressedFrame(std::vector<unsigned char> compressedData)
 {
     if (mChannel != nullptr && mChannel->isOpen()) {

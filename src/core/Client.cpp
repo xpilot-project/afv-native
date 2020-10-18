@@ -306,7 +306,7 @@ void Client::sendTransceiverUpdate()
                     this->unguardPtt();
                 }
             });
-    mTransceiverUpdateTimer.enable(afv::afvTransciverUpdateIntervalMs);
+    mTransceiverUpdateTimer.enable(afv::afvTransceiverUpdateIntervalMs);
 }
 
 void Client::queueTransceiverUpdate()
