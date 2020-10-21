@@ -96,6 +96,14 @@ RadioSimulation::RadioSimulation(
     }
 }
 
+
+/**  Audio Enters here from The Microphone and exits into either the voiceFilter if enabled, or to the VoiceSink, usually the Opus Encoder
+ *
+ *
+ *
+ *
+ *
+ */
 void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
 {
     // do the peak/Vu calcs
@@ -129,8 +137,6 @@ void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
  *
  *
  */
-
-
 void RadioSimulation::processCompressedFrame(std::vector<unsigned char> compressedData)
 {
     if (mChannel != nullptr && mChannel->isOpen()) {

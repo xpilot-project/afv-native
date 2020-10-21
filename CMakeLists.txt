@@ -49,8 +49,10 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/afv/VoiceCompressionSink.h
 		include/afv-native/afv/VoiceSession.h
 		include/afv-native/afv/dto/AuthRequest.h
+        include/afv-native/afv/dto/CrossCoupleGroup.h
 		include/afv-native/afv/dto/PostCallsignResponse.h
 		include/afv-native/afv/dto/Station.h
+        include/afv-native/afv/dto/StationTransceiver.h
 		include/afv-native/afv/dto/Transceiver.h
 		include/afv-native/afv/dto/VoiceServerConnectionData.h
 		include/afv-native/afv/dto/interfaces/IAudio.h
@@ -107,8 +109,10 @@ set(AFV_NATIVE_SOURCES
 		src/afv/VoiceCompressionSink.cpp
 		src/afv/VoiceSession.cpp
 		src/afv/dto/AuthRequest.cpp
+        src/afv/dto/CrossCoupleGroup.cpp
 		src/afv/dto/PostCallsignResponse.cpp
 		src/afv/dto/Station.cpp
+        src/afv/dto/StationTransceiver.cpp
 		src/afv/dto/Transceiver.cpp
 		src/afv/dto/VoiceServerConnectionData.cpp
 		src/audio/AudioDevice.cpp
