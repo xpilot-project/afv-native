@@ -9,6 +9,7 @@
 #define atcClient_h
 
 #include "afv-native/afv/RadioSimulation.h"
+#include "afv-native/afv/ATCRadioStack.h"
 
 #include <memory>
 #include <event2/event.h>
@@ -79,21 +80,7 @@ namespace afv_native {
          */
         void setClientPosition(double lat, double lon, double amslm, double aglm);
 
-        /** set the radio frequency for the nominated radio.
-         *
-         * This method will invoke an immediate transceiver set update.
-         *
-         * @param radioNum the ordinal of the radio to tune
-         * @param freq the frequency in Hz
-         */
-        void setRadioState(unsigned int radioNum, int freq);
 
-        /** set the radio the Ptt will control.
-         *
-         * @param radioNum the ordinal fo the radio that will transmit when PTT
-         *     is pressed.
-         */
-        void setTxRadio(unsigned int radioNum);
 
         /** sets the (linear) gain to be applied to radioNum */
         void setRadioGain(unsigned int radioNum, float gain);
@@ -232,6 +219,7 @@ namespace afv_native {
         afv::APISession mAPISession;
         afv::VoiceSession mVoiceSession;
         std::shared_ptr<afv::RadioSimulation> mRadioSim;
+        std::shared_ptr<afv::ATCRadioStack> mATCRadioStack;
         std::shared_ptr<audio::AudioDevice> mAudioDevice;
         std::shared_ptr<audio::AudioDevice> mSpeakerDevice;
         
@@ -240,6 +228,7 @@ namespace afv_native {
         double mClientLongitude;
         double mClientAltitudeMSLM;
         double mClientAltitudeGLM;
+        
         std::vector<struct ClientRadioState> mRadioState;
 
         std::string mCallsign;

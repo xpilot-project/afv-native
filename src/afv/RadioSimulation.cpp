@@ -408,26 +408,26 @@ void RadioSimulation::setTxRadio(unsigned int radio)
     mTxRadio = radio;
 }
 
-void RadioSimulation::dtoHandler(const std::string &dtoName, const unsigned char *bufIn, size_t bufLen, void *user_data)
-{
-    auto *thisRs = reinterpret_cast<RadioSimulation *>(user_data);
-    thisRs->instDtoHandler(dtoName, bufIn, bufLen);
-}
-
-void RadioSimulation::instDtoHandler(const std::string &dtoName, const unsigned char *bufIn, size_t bufLen)
-{
-    if (dtoName == "AR") {
-        try {
-            dto::AudioRxOnTransceivers audioIn;
-            auto unpacker = msgpack::unpack(reinterpret_cast<const char *>(bufIn), bufLen);
-            auto msgpackObj = unpacker.get();
-            msgpackObj.convert(audioIn);
-            rxVoicePacket(audioIn);
-        } catch (msgpack::type_error &e) {
-            LOG("radiosimulation", "Error unmarshalling %s packet: %s", dtoName.c_str(), e.what());
-        }
-    }
-}
+//void RadioSimulation::dtoHandler(const std::string &dtoName, const unsigned char *bufIn, size_t bufLen, void *user_data)
+//{
+//    auto *thisRs = reinterpret_cast<RadioSimulation *>(user_data);
+//    thisRs->instDtoHandler(dtoName, bufIn, bufLen);
+//}
+//
+//void RadioSimulation::instDtoHandler(const std::string &dtoName, const unsigned char *bufIn, size_t bufLen)
+//{
+//    if (dtoName == "AR") {
+//        try {
+//            dto::AudioRxOnTransceivers audioIn;
+//            auto unpacker = msgpack::unpack(reinterpret_cast<const char *>(bufIn), bufLen);
+//            auto msgpackObj = unpacker.get();
+//            msgpackObj.convert(audioIn);
+//            rxVoicePacket(audioIn);
+//        } catch (msgpack::type_error &e) {
+//            LOG("radiosimulation", "Error unmarshalling %s packet: %s", dtoName.c_str(), e.what());
+//        }
+//    }
+//}
 
 void RadioSimulation::setUDPChannel(cryptodto::UDPChannel *newChannel)
 {

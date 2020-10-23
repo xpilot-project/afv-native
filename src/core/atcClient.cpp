@@ -33,8 +33,8 @@ ATCClient::ATCClient(
         mSpeakerDevice(),
         mClientLatitude(0.0),
         mClientLongitude(0.0),
-        mClientAltitudeMSLM(0.0),
-        mClientAltitudeGLM(0.0),
+        mClientAltitudeMSLM(100.0),
+        mClientAltitudeGLM(100.0),
         mRadioState(2),
         mCallsign(),
         mTxUpdatePending(false),
@@ -76,28 +76,6 @@ void ATCClient::setClientPosition(double lat, double lon, double amslm, double a
     mClientLongitude = lon;
     mClientAltitudeMSLM = amslm;
     mClientAltitudeGLM = aglm;
-}
-
-void ATCClient::setRadioState(unsigned int radioNum, int freq)
-{
-    if (radioNum > mRadioState.size()) {
-        return;
-    }
-    if (mRadioState[radioNum].mNextFreq == freq) {
-        // no change.
-        return;
-    }
-    mRadioState[radioNum].mNextFreq = freq;
-    // pass down so we get inbound filtering.
-    mRadioSim->setFrequency(radioNum, freq);
-    if (mRadioState[radioNum].mCurrentFreq != freq) {
-        queueTransceiverUpdate();
-    }
-}
-
-void ATCClient::setTxRadio(unsigned int radioNum)
-{
-    mRadioSim->setTxRadio(radioNum);
 }
 
 bool ATCClient::connect()
@@ -227,7 +205,7 @@ void ATCClient::startAudio()
                 mAudioInputDeviceName,
                 mAudioApi);
     } else {
-        LOG("afv::ATCClient", "Tried to recreate audio device...");
+        LOG("afv::ATCClient", "Tried to recreate Headset audio device...");
     }
     mAudioDevice->setSink(mRadioSim);
     mAudioDevice->setSource(mRadioSim);

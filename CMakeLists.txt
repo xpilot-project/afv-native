@@ -41,6 +41,7 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/event.h
 		include/afv-native/Log.h
 		include/afv-native/afv/APISession.h
+        include/afv-native/afv/ATCRadioStack.h
 		include/afv-native/afv/EffectResources.h
 		include/afv-native/afv/params.h
 		include/afv-native/afv/RadioSimulation.h
@@ -103,6 +104,7 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/utility.h)
 set(AFV_NATIVE_SOURCES
 		src/afv/APISession.cpp
+        src/afv/ATCRadioStack.cpp
 		src/afv/EffectResources.cpp
 		src/afv/RadioSimulation.cpp
 		src/afv/RemoteVoiceSource.cpp

@@ -192,10 +192,10 @@ namespace afv_native {
 
             void processCompressedFrame(std::vector<unsigned char> compressedData) override;
 
-            static void dtoHandler(
-                    const std::string &dtoName, const unsigned char *bufIn, size_t bufLen, void *user_data);
-            void instDtoHandler(
-                    const std::string &dtoName, const unsigned char *bufIn, size_t bufLen);
+//            static void dtoHandler(
+//                    const std::string &dtoName, const unsigned char *bufIn, size_t bufLen, void *user_data);
+//            void instDtoHandler(
+//                    const std::string &dtoName, const unsigned char *bufIn, size_t bufLen);
 
             void maintainIncomingStreams();
         private:
