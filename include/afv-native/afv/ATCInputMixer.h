@@ -15,6 +15,8 @@
 namespace afv_native {
     namespace afv {
     
+    class ATCInputMixer;
+    
     
     /** InputInPort - Routes Audio
      *
@@ -23,20 +25,20 @@ namespace afv_native {
      */
     
     class InputInPort :
-    public audio::ISampleSink {
-        InputInPort();
-        void putAudioFrame(const audio::SampleType *bufferIn) override;
+    public audio::ISampleSink,
+    public std::enable_shared_from_this<InputInPort> {
+    public:
         
+        InputInPort(std::weak_ptr<ATCInputMixer> inMixer, unsigned int inPort);
+        void putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort = 0 ) override;
+
+        
+    protected:
+        std::weak_ptr<ATCInputMixer> mMixer;
+        unsigned int mLocalPort;
         
     };
     
-    class InputOutPort {
-    public:
-        InputOutPort();
-    protected:
-        std::shared_ptr<audio::ISampleSink> output;
-        
-    };
     
     
     
@@ -48,7 +50,8 @@ namespace afv_native {
      *
      */
     
-    class ATCInputMixer {
+    class ATCInputMixer :
+    public std::enable_shared_from_this<ATCInputMixer>{
         
     public:
         
@@ -61,7 +64,7 @@ namespace afv_native {
          *  @return ISampleSink used to pass into the Audio Device as its sink
          *  @param port Mixer port to connect this input device to
          */
-        audio::ISampleSink attachInputDevice(unsigned int port);
+        std::shared_ptr<audio::ISampleSink> attachInputDevice(unsigned int port);
         
         
         /** attachOutput connects a port to the specified Sink
@@ -71,7 +74,7 @@ namespace afv_native {
          *
          */
         
-        void attachOutput(unsigned int port, std::shared_ptr<audio::ISampleSink> sink);
+        void attachOutput(unsigned int port, std::shared_ptr<audio::ISampleSink> sink, unsigned int remotePort);
         
         
         /** makeMixerConnection connect two ports
@@ -89,8 +92,38 @@ namespace afv_native {
         bool hasMixerConnection(unsigned int srcport, unsigned int dstport);
         
         
+        
+        void putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort);
+        
     protected:
-        std::map<unsigned int,InputInPort> mInputs;
+        //               Output Port    Connected
+        typedef std::map<unsigned int, bool> MixerMap;
+        
+        //                Input Port
+        typedef std::map<unsigned int, MixerMap>   MixerTable;
+        //                    Connection        Remote Port
+        typedef std::pair<std::shared_ptr<audio::ISampleSink>, unsigned int> OutputSpec;
+        //               Output Port
+        typedef std::map<unsigned int, OutputSpec> OutputMap;
+        
+    
+        
+        
+        
+        MixerTable mMixer;
+        
+        //std::map<unsigned int,InputInPort> mInputs;
+        std::map<unsigned int,std::shared_ptr<InputInPort>> mInputs;
+        OutputMap mOutputs;
+        
+        
+        
+              
+        
+        
+        
+        
+        
         
         
     };

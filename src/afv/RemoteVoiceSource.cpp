@@ -56,8 +56,8 @@ RemoteVoiceSource::RemoteVoiceSource():
     mJitterBuffer = jitter_buffer_init(1);
     jitter_buffer_ctl(mJitterBuffer, JITTER_BUFFER_SET_DESTROY_CALLBACK, reinterpret_cast<void *>(::free));
 
-    spx_uint32_t jitterMargin = 3;
-    jitter_buffer_ctl(mJitterBuffer, JITTER_BUFFER_SET_MARGIN, &jitterMargin);
+    //spx_uint32_t jitterMargin = 3;
+    //jitter_buffer_ctl(mJitterBuffer, JITTER_BUFFER_SET_MARGIN, &jitterMargin);
 
     int opus_status;
     mDecoder = opus_decoder_create(sampleRateHz, 1, &opus_status);
@@ -120,6 +120,7 @@ SourceStatus RemoteVoiceSource::getAudioFrame(SampleType *bufferOut)
     if (mDecoder != nullptr) {
         switch (jitter_status) {
         case JITTER_BUFFER_MISSING:
+                LOG("instreambuffer", "Jitter Buffer Missing! ");
             mCurrentFrame++;
             if (mEnding && (mCurrentFrame >= mEndingSequence)) {
                 ::memset(bufferOut, 0, frameSizeSamples * sizeof(SampleType));
@@ -130,6 +131,7 @@ SourceStatus RemoteVoiceSource::getAudioFrame(SampleType *bufferOut)
             }
             break;
         case JITTER_BUFFER_INSERTION:
+                LOG("instreambuffer", "Jitter Buffer insertion! ");
             // insert silence.
             ::memset(bufferOut, 0, frameSizeSamples * sizeof(SampleType));
             break;

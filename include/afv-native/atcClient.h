@@ -80,7 +80,21 @@ namespace afv_native {
          */
         void setClientPosition(double lat, double lon, double amslm, double aglm);
 
+        /** set the radio frequency for the nominated radio.
+         *
+         * This method will invoke an immediate transceiver set update.
+         *
+         * @param radioNum the ordinal of the radio to tune
+         * @param freq the frequency in Hz
+         */
+        void setRadioState(unsigned int radioNum, int freq);
 
+        /** set the radio the Ptt will control.
+         *
+         * @param radioNum the ordinal fo the radio that will transmit when PTT
+         *     is pressed.
+         */
+        void setTxRadio(unsigned int radioNum);
 
         /** sets the (linear) gain to be applied to radioNum */
         void setRadioGain(unsigned int radioNum, float gain);

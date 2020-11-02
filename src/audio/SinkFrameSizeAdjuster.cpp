@@ -57,8 +57,9 @@ SinkFrameSizeAdjuster::~SinkFrameSizeAdjuster()
     delete[] mSinkBuffer;
 }
 
-void SinkFrameSizeAdjuster::putAudioFrame(const SampleType *bufferIn)
+void SinkFrameSizeAdjuster::putAudioFrame(const SampleType *bufferIn, unsigned int inPort)
 {
+    if(inPort != 0) return; 
     size_t sourceOffset = 0;
     //precondition:  mSinkBufferOffset cannot be >= frameSizeSamples.  If it was
     // at the end of the last push, that's a bug.

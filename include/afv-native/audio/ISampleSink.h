@@ -40,7 +40,7 @@ namespace afv_native {
     namespace audio {
         class ISampleSink {
         public:
-            virtual void putAudioFrame(const SampleType *bufferIn) = 0;
+            virtual void putAudioFrame(const SampleType *bufferIn, unsigned int port = 0 ) = 0;
         };
     }
 }

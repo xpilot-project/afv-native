@@ -59,7 +59,7 @@ namespace afv_native {
             int open();
             void close();
             void reset();
-            void putAudioFrame(const audio::SampleType *bufferIn) override;
+            void putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort=0) override;
         };
     }
 }

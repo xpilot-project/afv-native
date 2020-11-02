@@ -78,6 +78,28 @@ void ATCClient::setClientPosition(double lat, double lon, double amslm, double a
     mClientAltitudeGLM = aglm;
 }
 
+void ATCClient::setRadioState(unsigned int radioNum, int freq)
+{
+    if (radioNum > mRadioState.size()) {
+        return;
+    }
+    if (mRadioState[radioNum].mNextFreq == freq) {
+        // no change.
+        return;
+    }
+    mRadioState[radioNum].mNextFreq = freq;
+    // pass down so we get inbound filtering.
+    mRadioSim->setFrequency(radioNum, freq);
+    if (mRadioState[radioNum].mCurrentFreq != freq) {
+        queueTransceiverUpdate();
+    }
+}
+
+void ATCClient::setTxRadio(unsigned int radioNum)
+{
+    mRadioSim->setTxRadio(radioNum);
+}
+
 bool ATCClient::connect()
 {
     if (!isAPIConnected()) {

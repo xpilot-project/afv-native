@@ -104,8 +104,9 @@ RadioSimulation::RadioSimulation(
  *
  *
  */
-void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
+void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort)
 {
+    if(inPort != 0) return;
     // do the peak/Vu calcs
     {
         auto *b = bufferIn;
