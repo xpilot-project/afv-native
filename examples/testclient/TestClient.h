@@ -59,15 +59,15 @@ class TestClient
     std::string mAFVCallsign = "";
 
 
-    double mClientLatitude = 51.1;
-    double mClientLongitude = -0.2;
+    double mClientLatitude = 34.9;
+    double mClientLongitude = -118.500;
     double mClientAltitudeMSLM = 500.0;
     double mClientAltitudeAGLM = 500.0;
 
     int mTxRadio = 0;
-    int mCom1Freq = 134225000;
+    int mCom1Freq = 125800000;
     float mCom1Gain = 1.0f;
-    int mCom2Freq = 126700000;
+    int mCom2Freq = 124500000;
     float mCom2Gain = 1.0f;
     bool mPTT = false;
 
