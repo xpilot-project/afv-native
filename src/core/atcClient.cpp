@@ -20,7 +20,6 @@ using namespace afv_native;
 ATCClient::ATCClient(
         struct event_base *evBase,
         const std::string &resourceBasePath,
-        unsigned int numRadios,
         const std::string &clientName,
         std::string baseUrl):
         mFxRes(std::make_shared<afv::EffectResources>(resourceBasePath)),
@@ -28,14 +27,13 @@ ATCClient::ATCClient(
         mTransferManager(mEvBase),
         mAPISession(mEvBase, mTransferManager, std::move(baseUrl)),
         mVoiceSession(mAPISession),
-        mRadioSim(std::make_shared<afv::RadioSimulation>(mEvBase, mFxRes, &mVoiceSession.getUDPChannel(), numRadios)),
+        mATCRadioStack(std::make_shared<afv::ATCRadioStack>(mEvBase, mFxRes, &mVoiceSession.getUDPChannel())),
         mAudioDevice(),
         mSpeakerDevice(),
         mClientLatitude(0.0),
         mClientLongitude(0.0),
         mClientAltitudeMSLM(100.0),
         mClientAltitudeGLM(100.0),
-        mRadioState(2),
         mCallsign(),
         mTxUpdatePending(false),
         mWantPtt(false),
@@ -51,11 +49,7 @@ ATCClient::ATCClient(
     mAPISession.AliasUpdateCallback.addCallback(this, std::bind(&ATCClient::aliasUpdateCallback, this));
     mAPISession.StationTransceiversUpdateCallback.addCallback(this, std::bind(&ATCClient::stationTransceiversUpdateCallback, this));
     mVoiceSession.StateCallback.addCallback(this, std::bind(&ATCClient::voiceStateCallback, this, std::placeholders::_1));
-    // forcibly synchronise the RadioSim state.
-    mRadioSim->setTxRadio(0);
-    for (size_t i = 0; i < mRadioState.size(); i++) {
-        mRadioSim->setFrequency(i, mRadioState[i].mNextFreq);
-    }
+    mATCRadioStack->setupDevices(&ClientEventCallback);
 }
 
 ATCClient::~ATCClient()
@@ -66,8 +60,10 @@ ATCClient::~ATCClient()
 
     // disconnect the radiosim from the UDP channel so if it's held open by the
     // audio device, it doesn't crash the client.
-    mRadioSim->setPtt(false);
-    mRadioSim->setUDPChannel(nullptr);
+        
+    mATCRadioStack->setPtt(false);
+    mATCRadioStack->setUDPChannel(nullptr);
+    
 }
 
 void ATCClient::setClientPosition(double lat, double lon, double amslm, double aglm)
@@ -78,27 +74,18 @@ void ATCClient::setClientPosition(double lat, double lon, double amslm, double a
     mClientAltitudeGLM = aglm;
 }
 
-void ATCClient::setRadioState(unsigned int radioNum, int freq)
+void ATCClient::setTx(unsigned int freq, bool active)
 {
-    if (radioNum > mRadioState.size()) {
-        return;
-    }
-    if (mRadioState[radioNum].mNextFreq == freq) {
-        // no change.
-        return;
-    }
-    mRadioState[radioNum].mNextFreq = freq;
-    // pass down so we get inbound filtering.
-    mRadioSim->setFrequency(radioNum, freq);
-    if (mRadioState[radioNum].mCurrentFreq != freq) {
-        queueTransceiverUpdate();
-    }
+    mATCRadioStack->setTx(freq, active);
+    queueTransceiverUpdate();
 }
 
-void ATCClient::setTxRadio(unsigned int radioNum)
+void ATCClient::setRx(unsigned int freq, bool active)
 {
-    mRadioSim->setTxRadio(radioNum);
+    mATCRadioStack->setRx(freq, active);
+    queueTransceiverUpdate();
 }
+
 
 bool ATCClient::connect()
 {
@@ -138,7 +125,7 @@ void ATCClient::setCallsign(std::string callsign)
         return;
     }
     mVoiceSession.setCallsign(callsign);
-    mRadioSim->setCallsign(callsign);
+    mATCRadioStack->setCallsign(callsign);
     mCallsign = std::move(callsign);
 }
 
@@ -163,7 +150,7 @@ void ATCClient::voiceStateCallback(afv::VoiceSessionState state)
         stopTransceiverUpdate();
         // bring down the API session too.
         mAPISession.Disconnect();
-        mRadioSim->reset();
+        mATCRadioStack->reset();
         ClientEventCallback.invokeAll(ClientEventType::VoiceServerDisconnected, nullptr);
         break;
     case afv::VoiceSessionState::Error:
@@ -172,7 +159,7 @@ void ATCClient::voiceStateCallback(afv::VoiceSessionState state)
         stopTransceiverUpdate();
         // bring down the API session too.
         mAPISession.Disconnect();
-        mRadioSim->reset();
+        mATCRadioStack->reset();
         voiceError = mVoiceSession.getLastError();
         if (voiceError == afv::VoiceSessionError::UDPChannelError) {
             channelErrno = mVoiceSession.getUDPChannel().getLastErrno();
@@ -219,6 +206,26 @@ void ATCClient::sessionStateCallback(afv::APISessionState state)
 
 void ATCClient::startAudio()
 {
+    
+        if (!mSpeakerDevice) {
+            LOG("afv::ATCClient", "Initialising Speaker Audio...");
+            mSpeakerDevice = audio::AudioDevice::makeDevice(
+                    mClientName,
+                    mAudioSpeakerDeviceName,
+                    mAudioInputDeviceName,
+                    mAudioApi);
+        } else {
+            LOG("afv::ATCClient", "Tried to recreate Speaker audio device...");
+        }
+        mSpeakerDevice->setSink(nullptr);
+        mSpeakerDevice->setSource(mATCRadioStack->speakerDevice());
+        if (!mSpeakerDevice->open()) {
+            LOG("afv::ATCClient", "Unable to open Speaker audio device.");
+            stopAudio();
+            ClientEventCallback.invokeAll(ClientEventType::AudioError, nullptr);
+        };
+    
+    
     if (!mAudioDevice) {
         LOG("afv::ATCClient", "Initialising Headset Audio...");
         mAudioDevice = audio::AudioDevice::makeDevice(
@@ -229,20 +236,16 @@ void ATCClient::startAudio()
     } else {
         LOG("afv::ATCClient", "Tried to recreate Headset audio device...");
     }
-    mAudioDevice->setSink(mRadioSim);
-    mAudioDevice->setSource(mRadioSim);
+    mAudioDevice->setSink(mATCRadioStack);
+    
+    mAudioDevice->setSource(mATCRadioStack->headsetDevice());
     if (!mAudioDevice->open()) {
         LOG("afv::ATCClient", "Unable to open Headset audio device.");
         stopAudio();
         ClientEventCallback.invokeAll(ClientEventType::AudioError, nullptr);
     };
     
-    
-    
-    
-    
-    
-    
+
 }
 
 void ATCClient::stopAudio()
@@ -259,13 +262,7 @@ void ATCClient::stopAudio()
 
 std::vector<afv::dto::Transceiver> ATCClient::makeTransceiverDto()
 {
-    std::vector<afv::dto::Transceiver> retSet;
-    for (unsigned i = 0; i < mRadioState.size(); i++) {
-        retSet.emplace_back(
-                i, mRadioState[i].mNextFreq, mClientLatitude,
-                mClientLongitude, mClientAltitudeMSLM, mClientAltitudeGLM);
-    }
-    return std::move(retSet);
+    return std::move(mATCRadioStack->makeTransceiverDto());
 }
 
 void ATCClient::sendTransceiverUpdate()
@@ -287,14 +284,11 @@ void ATCClient::sendTransceiverUpdate()
             transceiverDto,
             [this, transceiverDto](http::Request *r, bool success) {
                 if (success && r->getStatusCode() == 200) {
-                    for (unsigned i = 0; i < this->mRadioState.size(); i++) {
-                        this->mRadioState[i].mCurrentFreq = transceiverDto[i].Frequency;
-                    }
                     this->mTxUpdatePending = false;
                     this->unguardPtt();
                 }
             });
-    mTransceiverUpdateTimer.enable(afv::afvTransceiverUpdateIntervalMs);
+    mTransceiverUpdateTimer.enable(afv::afvATCTransceiverUpdateIntervalMs);
 }
 
 void ATCClient::queueTransceiverUpdate()
@@ -311,14 +305,8 @@ void ATCClient::unguardPtt()
 {
     if (mWantPtt && !mPtt) {
         LOG("ATCClient", "PTT was guarded - checking.");
-        if (!areTransceiversSynced()) {
-            LOG("Client", "Freqs still unsync'd.  Restarting update.");
-            queueTransceiverUpdate();
-            return;
-        }
-        LOG("ATCClient", "Freqs in sync - allowing PTT now.");
         mPtt = true;
-        mRadioSim->setPtt(true);
+        mATCRadioStack->setPtt(true);
         ClientEventCallback.invokeAll(ClientEventType::PttOpen, nullptr);
     }
 }
@@ -329,7 +317,7 @@ void ATCClient::setPtt(bool pttState)
         mWantPtt = true;
         // if we're setting the Ptt, we have to check a few things.
         // if we're still pending an update, and the radios are out of step, guard the Ptt.
-        if (!areTransceiversSynced() || mTxUpdatePending) {
+        if (mTxUpdatePending) {
             if (!mTxUpdatePending) {
                 LOG("ATCClient", "Wanted to Open PTT mid-update - guarding");
                 queueTransceiverUpdate();
@@ -343,7 +331,7 @@ void ATCClient::setPtt(bool pttState)
         return;
     }
     mPtt = mWantPtt;
-    mRadioSim->setPtt(mPtt);
+    mATCRadioStack->setPtt(mPtt);
     if (mPtt) {
         LOG("Client", "Opened PTT");
         ClientEventCallback.invokeAll(ClientEventType::PttOpen, nullptr);
@@ -353,14 +341,9 @@ void ATCClient::setPtt(bool pttState)
     }
 }
 
-bool ATCClient::areTransceiversSynced() const
+void ATCClient::setRT(bool rtState)
 {
-    for (const auto &iter: mRadioState) {
-        if (iter.mNextFreq != iter.mCurrentFreq) {
-            return false;
-        }
-    }
-    return true;
+    mATCRadioStack->setRT(rtState);
 }
 
 void ATCClient::setAudioInputDevice(std::string inputDevice)
@@ -404,40 +387,41 @@ void ATCClient::setAudioApi(audio::AudioDevice::Api api)
     mAudioApi = api;
 }
 
-void ATCClient::setRadioGain(unsigned int radioNum, float gain)
+void ATCClient::setRadioGain(unsigned int freq, float gain)
 {
-    mRadioSim->setGain(radioNum, gain);
+    mATCRadioStack->setGain(freq, gain);
 }
+
 
 bool ATCClient::getEnableInputFilters() const
 {
-    return mRadioSim->getEnableInputFilters();
+    return mATCRadioStack->getEnableInputFilters();
 }
 
 void ATCClient::setEnableInputFilters(bool enableInputFilters)
 {
-    mRadioSim->setEnableInputFilters(enableInputFilters);
+    mATCRadioStack->setEnableInputFilters(enableInputFilters);
 }
 
 double ATCClient::getInputPeak() const
 {
-    if (mRadioSim) {
-        return mRadioSim->getPeak();
+    if (mATCRadioStack) {
+        return mATCRadioStack->getPeak();
     }
     return -INFINITY;
 }
 
 double ATCClient::getInputVu() const
 {
-    if (mRadioSim) {
-        return mRadioSim->getVu();
+    if (mATCRadioStack) {
+        return mATCRadioStack->getVu();
     }
     return -INFINITY;
 }
 
 void ATCClient::setEnableOutputEffects(bool enableEffects)
 {
-    mRadioSim->setEnableOutputEffects(enableEffects);
+    mATCRadioStack->setEnableOutputEffects(enableEffects);
 }
 
 void ATCClient::aliasUpdateCallback()
@@ -453,7 +437,7 @@ void ATCClient::stationTransceiversUpdateCallback()
 
 std::map<std::string, std::vector<afv::dto::StationTransceiver>> ATCClient::getStationTransceivers() const
 {
-    return std::move(mAPISession.getStationTransceivers());   
+    return mAPISession.getStationTransceivers();   
 }
 
 
@@ -464,36 +448,60 @@ std::vector<afv::dto::Station> ATCClient::getStationAliases() const
 
 void ATCClient::logAudioStatistics() {
     if (mAudioDevice) {
-        LOG("ATCClient", "Output Buffer Underflows: %d", mAudioDevice->OutputUnderflows.load());
+        LOG("ATCClient", "Headset Buffer Underflows: %d", mAudioDevice->OutputUnderflows.load());
+        LOG("ATCClient", "Speaker Buffer Underflows: %d", mSpeakerDevice->OutputUnderflows.load());
         LOG("ATCClient", "Input Buffer Overflows: %d", mAudioDevice->InputOverflows.load());
     }
-}
-
-std::shared_ptr<const afv::RadioSimulation> ATCClient::getRadioSimulation() const {
-    return mRadioSim;
 }
 
 std::shared_ptr<const audio::AudioDevice> ATCClient::getAudioDevice() const {
     return mAudioDevice;
 }
 
-bool ATCClient::getRxActive(unsigned int radioNumber) {
-    if (mRadioSim) {
-        return mRadioSim->getRxActive(radioNumber);
+bool ATCClient::getRxActive(unsigned int freq) {
+    if (mATCRadioStack) {
+        return mATCRadioStack->getRxActive(freq);
     }
     return false;
 }
 
-bool ATCClient::getTxActive(unsigned int radioNumber) {
-    if (mRadioSim) {
-        return mRadioSim->getTxActive(radioNumber);
+bool ATCClient::getTxActive(unsigned int freq) {
+    if (mATCRadioStack) {
+        return mATCRadioStack->getTxActive(freq);
     }
     return false;
+}
+
+void ATCClient::setOnHeadset(unsigned int freq, bool onHeadset)
+{
+    mATCRadioStack->setOnHeadset(freq, onHeadset);
+    
 }
 
 void ATCClient::requestStationTransceivers(std::string inStation)
 {
     mAPISession.requestStationTransceivers(inStation);
 }
+
+void ATCClient::addFrequency(unsigned int freq, bool onHeadset)
+{
+    mATCRadioStack->addFrequency(freq,  onHeadset);
+}
+
+void ATCClient::linkTransceivers(std::string callsign, unsigned int freq)
+{
+    auto transceivers = getStationTransceivers();
+    if(transceivers[callsign].size()>0)
+    {
+        mATCRadioStack->setTransceivers(freq, transceivers[callsign]);
+        queueTransceiverUpdate();
+        
+    }
+    else
+    {
+        //TODO: We need to request the transceivers from this station & set a flag to push them here when they arrive
+    }
+}
+
 
 

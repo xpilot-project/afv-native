@@ -48,15 +48,12 @@ namespace afv_native {
          *      resource files are located.
          * @param baseUrl The baseurl for the AFV API server to connect to.  The
          *      default should be used in most cases.
-         * @param numRadios The number of transceivers to instantiate for this
-         *      client.
          * @param clientName The name of this client to advertise to the
          *      audio-subsystem.
          */
         ATCClient(
                 struct event_base *evBase,
                 const std::string &resourceBasePath,
-                unsigned int numRadios = 2,
                 const std::string &clientName = "AFV-Native",
                 std::string baseUrl = "https://voice1.vatsim.uk");
 
@@ -80,21 +77,16 @@ namespace afv_native {
          */
         void setClientPosition(double lat, double lon, double amslm, double aglm);
 
-        /** set the radio frequency for the nominated radio.
-         *
-         * This method will invoke an immediate transceiver set update.
-         *
-         * @param radioNum the ordinal of the radio to tune
-         * @param freq the frequency in Hz
-         */
-        void setRadioState(unsigned int radioNum, int freq);
-
         /** set the radio the Ptt will control.
          *
-         * @param radioNum the ordinal fo the radio that will transmit when PTT
-         *     is pressed.
+         * @param freq the frequency to set the transmit state
+         * @param active If the frequency is transmitting or not
+         *
          */
-        void setTxRadio(unsigned int radioNum);
+        void setTx(unsigned int freq, bool active);
+        
+        
+        void setRx(unsigned int freq, bool active);
 
         /** sets the (linear) gain to be applied to radioNum */
         void setRadioGain(unsigned int radioNum, float gain);
@@ -108,6 +100,11 @@ namespace afv_native {
          * @param pttState true to start transmitting, false otherwise.
          */
         void setPtt(bool pttState);
+        
+        
+        void setRT(bool rtState);
+        
+        void setOnHeadset(unsigned int freq, bool onHeadset);
 
         /** setCredentials sets the user Credentials for this client.
          *
@@ -196,7 +193,6 @@ namespace afv_native {
          */
         void logAudioStatistics();
 
-        std::shared_ptr<const afv::RadioSimulation> getRadioSimulation() const;
         std::shared_ptr<const audio::AudioDevice> getAudioDevice() const;
 
         /** getRxActive returns if the nominated radio is currently Receiving voice, irrespective as to if it's audiable
@@ -219,12 +215,11 @@ namespace afv_native {
          *  @param inStation the name of the station to list the transceivers
          */
         void requestStationTransceivers(std::string inStation);
+        
+        void addFrequency(unsigned int freq, bool onHeadset);
+        void linkTransceivers(std::string callsign, unsigned int freq);
 
     protected:
-        struct ClientRadioState {
-            int mCurrentFreq;
-            int mNextFreq;
-        };
 
         struct event_base *mEvBase;
         std::shared_ptr<afv::EffectResources> mFxRes;
@@ -232,7 +227,6 @@ namespace afv_native {
         http::EventTransferManager mTransferManager;
         afv::APISession mAPISession;
         afv::VoiceSession mVoiceSession;
-        std::shared_ptr<afv::RadioSimulation> mRadioSim;
         std::shared_ptr<afv::ATCRadioStack> mATCRadioStack;
         std::shared_ptr<audio::AudioDevice> mAudioDevice;
         std::shared_ptr<audio::AudioDevice> mSpeakerDevice;
@@ -242,8 +236,7 @@ namespace afv_native {
         double mClientLongitude;
         double mClientAltitudeMSLM;
         double mClientAltitudeGLM;
-        
-        std::vector<struct ClientRadioState> mRadioState;
+
 
         std::string mCallsign;
 
@@ -254,7 +247,7 @@ namespace afv_native {
         bool mWantPtt;
         bool mPtt;
 
-        bool areTransceiversSynced() const;
+        
         std::vector<afv::dto::Transceiver> makeTransceiverDto();
         /* sendTransceiverUpdate sends the update now, in process.
          * queueTransceiverUpdate schedules it for the next eventloop.  This is a

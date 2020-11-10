@@ -315,6 +315,8 @@ std::vector<dto::Station> APISession::getStationAliases() const
 
 void APISession::requestStationTransceivers(std::string stationName)
 {
+    if(mState!=APISessionState::Running) return;
+    
     /* start the authentication request */
     mStationTransceiversRequest.reset();
     mStationTransceiversRequest.setUrl(mBaseURL + "/api/v1/stations/byName/" + stationName + "/transceivers/allDistinctObeyExclusions");
@@ -366,5 +368,5 @@ void APISession::_stationTransceiversCallback(http::RESTRequest *req, bool succe
 
 std::map<std::string, std::vector<dto::StationTransceiver>> APISession::getStationTransceivers() const
 {
-    return mStationTransceivers;
+    return std::move(mStationTransceivers);
 }
