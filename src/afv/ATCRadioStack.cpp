@@ -315,7 +315,7 @@ audio::SourceStatus ATCRadioStack::getAudioFrame(audio::SampleType *bufferOut, b
 
 bool ATCRadioStack::_packetListening(const afv::dto::AudioRxOnTransceivers &pkt)
 {
-    std::lock_guard<std::mutex> radioStateLock(mRadioStateLock);
+    //std::lock_guard<std::mutex> radioStateLock(mRadioStateLock);
     for (auto trans: pkt.Transceivers)
     {
         if(mRadioState[trans.Frequency].rx) return true;
@@ -360,7 +360,14 @@ void ATCRadioStack::setUDPChannel(cryptodto::UDPChannel *newChannel)
                 });
     }
 }
-
+void ATCRadioStack::setClientPosition(double lat, double lon, double amslm, double aglm)
+{
+    mClientLatitude = lat;
+    mClientLongitude = lon;
+    mClientAltitudeMSLM = amslm;
+    mClientAltitudeGLM = aglm;
+    
+}
 
 void ATCRadioStack::setTransceivers(unsigned int freq, std::vector<afv::dto::StationTransceiver> transceivers)
 {
@@ -373,7 +380,7 @@ void ATCRadioStack::setTransceivers(unsigned int freq, std::vector<afv::dto::Sta
     std::vector<dto::Transceiver> outTransceivers;
     for (auto inTrans: transceivers)
     {
-        //Transceiver IDs all set to 0 here, they need to be updated when coalesced into the global transceiver package
+        //Transceiver IDs all set to 0 here, they will be updated when coalesced into the global transceiver package
         dto::Transceiver out(0,freq,inTrans.LatDeg,inTrans.LonDeg,inTrans.HeightMslM,inTrans.HeightAglM);
         mRadioState[freq].transceivers.emplace_back(out);
     }
@@ -385,20 +392,30 @@ std::vector<afv::dto::Transceiver> ATCRadioStack::makeTransceiverDto()
     unsigned int i=0;
     for (auto &state: mRadioState)
     {
-        for (auto &trans: state.second.transceivers)
+        if(state.second.transceivers.size()==0)
         {
-            retSet.emplace_back(i,trans.Frequency,trans.LatDeg,trans.LonDeg,trans.HeightMslM, trans.HeightAglM);
-            trans.ID=i;
+            //If there are no transceivers received from the network, we're using the client position
+            retSet.emplace_back(i,state.first,mClientLatitude,mClientLongitude,mClientAltitudeMSLM, mClientAltitudeGLM);
             i++;
+        }
+        else
+        {
+            for (auto &trans: state.second.transceivers)
+            {
+                retSet.emplace_back(i,trans.Frequency,trans.LatDeg,trans.LonDeg,trans.HeightMslM, trans.HeightAglM);
+                trans.ID=i;
+                i++;
+            }
         }
     }
     return std::move(retSet);
 }
 
 
-void ATCRadioStack::putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort)
+void ATCRadioStack::putAudioFrame(const audio::SampleType *bufferIn)
 {
-    if(inPort != 0) return;
+    if(mTick) mTick->tick();
+    
     // do the peak/Vu calcs
     {
         auto *b = bufferIn;
@@ -501,6 +518,7 @@ void ATCRadioStack::addFrequency(unsigned int freq, bool onHeadset)
     mRadioState[freq].onHeadset=onHeadset;
     mRadioState[freq].tx=false;
     mRadioState[freq].rx=true;
+    mRadioState[freq].mBypassEffects=false;
 }
 
 void ATCRadioStack::setCallsign(const std::string &newCallsign)
@@ -603,5 +621,11 @@ void ATCRadioStack::setEnableOutputEffects(bool enableEffects)
     for (auto &thisRadio: mRadioState) {
         thisRadio.second.mBypassEffects = !enableEffects;
     }
+}
+
+void ATCRadioStack::setTick(std::shared_ptr<audio::ITick> tick)
+{
+    mTick = tick;
+    
 }
 

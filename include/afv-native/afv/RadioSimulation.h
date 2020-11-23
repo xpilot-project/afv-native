@@ -128,7 +128,7 @@ namespace afv_native {
 
             void setEnableOutputEffects(bool enableEffects);
 
-            void putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort = 0) override;
+            void putAudioFrame(const audio::SampleType *bufferIn) override;
             audio::SourceStatus getAudioFrame(audio::SampleType *bufferOut) override;
 
             /** Contains the number of IncomingAudioStreams known to the simulation stack */

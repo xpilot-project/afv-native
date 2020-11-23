@@ -50,10 +50,9 @@ SpeexPreprocessor::~SpeexPreprocessor()
     speex_preprocess_state_destroy(mPreprocessorState);
 }
 
-void SpeexPreprocessor::putAudioFrame(const SampleType *bufferIn, unsigned int inPort)
+void SpeexPreprocessor::putAudioFrame(const SampleType *bufferIn)
 {
-    if(inPort != 0) return;
-    
+   
     for (size_t i = 0; i < frameSizeSamples; i++) {
         mSpeexFrame[i] = static_cast<spx_int16_t>(bufferIn[i] * 32767.0f);
     }

@@ -51,7 +51,7 @@ namespace afv_native {
         public:
             SinkFrameSizeAdjuster(std::shared_ptr<ISampleSink> destSink, unsigned int sinkFrameSize);
             virtual ~SinkFrameSizeAdjuster();
-            void putAudioFrame(const SampleType *bufferIn, unsigned int inPort = 0 ) override;
+            void putAudioFrame(const SampleType *bufferIn) override;
 
         };
     }

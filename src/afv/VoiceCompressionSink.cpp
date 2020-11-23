@@ -86,9 +86,8 @@ void VoiceCompressionSink::reset()
     open();
 }
 
-void VoiceCompressionSink::putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort)
+void VoiceCompressionSink::putAudioFrame(const audio::SampleType *bufferIn)
 {
-    if(inPort != 0) return;
     vector<unsigned char> outBuffer(audio::targetOutputFrameSizeBytes);
     auto enc_len = opus_encode_float(mEncoder, bufferIn, audio::frameSizeSamples, outBuffer.data(), outBuffer.size());
     if (enc_len < 0) {

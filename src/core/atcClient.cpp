@@ -30,10 +30,10 @@ ATCClient::ATCClient(
         mATCRadioStack(std::make_shared<afv::ATCRadioStack>(mEvBase, mFxRes, &mVoiceSession.getUDPChannel())),
         mAudioDevice(),
         mSpeakerDevice(),
-        mClientLatitude(0.0),
-        mClientLongitude(0.0),
-        mClientAltitudeMSLM(100.0),
-        mClientAltitudeGLM(100.0),
+//        mClientLatitude(0.0),
+//        mClientLongitude(0.0),
+//        mClientAltitudeMSLM(100.0),
+//        mClientAltitudeGLM(100.0),
         mCallsign(),
         mTxUpdatePending(false),
         mWantPtt(false),
@@ -68,10 +68,7 @@ ATCClient::~ATCClient()
 
 void ATCClient::setClientPosition(double lat, double lon, double amslm, double aglm)
 {
-    mClientLatitude = lat;
-    mClientLongitude = lon;
-    mClientAltitudeMSLM = amslm;
-    mClientAltitudeGLM = aglm;
+    mATCRadioStack->setClientPosition(lat, lon, amslm, aglm);
 }
 
 void ATCClient::setTx(unsigned int freq, bool active)
@@ -274,12 +271,7 @@ void ATCClient::sendTransceiverUpdate()
     auto transceiverDto = makeTransceiverDto();
     mTxUpdatePending = true;
 
-    /* ok - magic!
-     *
-     * so, in order to ensure that we flip the radio states to the CORRECT ONE
-     * when the callback fires, we copy capture the update message itself (which is
-     * all value copies) and use that to do the internal state update.
-    */
+ 
     mVoiceSession.postTransceiverUpdate(
             transceiverDto,
             [this, transceiverDto](http::Request *r, bool success) {
@@ -501,6 +493,11 @@ void ATCClient::linkTransceivers(std::string callsign, unsigned int freq)
     {
         //TODO: We need to request the transceivers from this station & set a flag to push them here when they arrive
     }
+}
+
+void ATCClient::setTick(std::shared_ptr<audio::ITick> tick)
+{
+    mATCRadioStack->setTick(tick);    
 }
 
 

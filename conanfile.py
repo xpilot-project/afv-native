@@ -20,7 +20,7 @@ class AfvNativeConan(ConanFile):
         "shared": False,
         "fPIC": True,
         "audio_library": "portaudio",
-        "build_examples": False,
+        "build_examples": True,
         "build_tests": False,
         "*:shared": False,
         "*:fPIC": True,

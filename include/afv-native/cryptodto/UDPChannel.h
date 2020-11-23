@@ -106,7 +106,7 @@ namespace afv_native {
                         pkt);
                 dgBuffer.resize(dgSize);
                 if (dgSize > 0) {
-                    auto sent = ::send(mUDPSocket, reinterpret_cast<char *>(dgBuffer.data()), dgBuffer.size(), 0);
+                    unsigned long sent = ::send(mUDPSocket, reinterpret_cast<char *>(dgBuffer.data()), dgBuffer.size(), 0);
                     if (sent < 0) {
                         if (errno == EWOULDBLOCK) {
                             LOG("udpchannel", "UDP packet dropped on send due to TxBuffer being full");

@@ -1,15 +1,15 @@
 //
-//  atcClient.hpp
+//  atisClient.h
 //  afv_native
 //
-//  Created by Mike Evans on 10/18/20.
+//  Created by Mike Evans on 11/18/20.
 //
 
-#ifndef atcClient_h
-#define atcClient_h
+#ifndef atisClient_h
+#define atisClient_h
 
-#include "afv-native/afv/RadioSimulation.h"
-#include "afv-native/afv/ATCRadioStack.h"
+//#include "afv-native/afv/RadioSimulation.h"
+//#include "afv-native/afv/ATCRadioStack.h"
 
 #include <memory>
 #include <event2/event.h>
@@ -18,17 +18,28 @@
 #include "afv-native/afv/APISession.h"
 #include "afv-native/afv/EffectResources.h"
 #include "afv-native/afv/VoiceSession.h"
+#include "afv-native/afv/VoiceCompressionSink.h"
 #include "afv-native/afv/dto/Transceiver.h"
 #include "afv-native/audio/AudioDevice.h"
+#include "afv-native/audio/SpeexPreprocessor.h"
+#include "afv-native/audio/SourceToSinkAdapter.h"
+#include "afv-native/audio/ITick.h"
 #include "afv-native/event/EventCallbackTimer.h"
 #include "afv-native/http/EventTransferManager.h"
 #include "afv-native/http/RESTRequest.h"
+#include "afv-native/audio/WavSampleStorage.h"
+
+
 
 namespace afv_native {
     /** ATCClient provides a fully functional ATC Client that can be integrated into
      * an application.
      */
-    class ATCClient {
+    class ATISClient :
+                public audio::ISampleSink,
+                public afv::ICompressedFrameSink,
+                public std::enable_shared_from_this<ATISClient>,
+                public audio::ITick {
     public:
         /** Construct an AFV-native ATC Client.
          *
@@ -51,13 +62,13 @@ namespace afv_native {
          * @param clientName The name of this client to advertise to the
          *      audio-subsystem.
          */
-        ATCClient(
+        ATISClient(
                 struct event_base *evBase,
-                const std::string &resourceBasePath,
+                std::string atisFile,
                 const std::string &clientName = "AFV-Native",
                 std::string baseUrl = "https://voice1.vatsim.uk");
 
-        virtual ~ATCClient();
+        virtual ~ATISClient();
 
         /** setBaseUrl is used to change the API URL.
          *
@@ -77,35 +88,13 @@ namespace afv_native {
          */
         void setClientPosition(double lat, double lon, double amslm, double aglm);
 
-        /** set the radio the Ptt will control.
-         *
-         * @param freq the frequency to set the transmit state
-         * @param active If the frequency is transmitting or not
-         *
-         */
-        void setTx(unsigned int freq, bool active);
+        void setFrequency(unsigned int freq);
         
-        
-        void setRx(unsigned int freq, bool active);
 
         /** sets the (linear) gain to be applied to radioNum */
         void setRadioGain(unsigned int radioNum, float gain);
 
-        /** sets the PTT (push-to-talk) state for the radio.
-         *
-         * @note If the radio frequencies are out of sync with the server, this will
-         * initiate an immediate transceiver set update and the Ptt will remain
-         * blocked/guarded until the update has been acknowledged.
-         *
-         * @param pttState true to start transmitting, false otherwise.
-         */
-        void setPtt(bool pttState);
         
-        
-        void setRT(bool rtState);
-        
-        void setOnHeadset(unsigned int freq, bool onHeadset);
-
         /** setCredentials sets the user Credentials for this client.
          *
          * @note This only affects future attempts to connect.
@@ -123,16 +112,7 @@ namespace afv_native {
          */
         void setCallsign(std::string callsign);
 
-        /** set the audioApi (per the audio::AudioDevice definitions) to use when next starting the
-         * audio system.
-         * @param api an API id
-         */
-        void setAudioApi(audio::AudioDevice::Api api);
-
-        void setAudioInputDevice(std::string inputDevice);
-        void setAudioOutputDevice(std::string outputDevice);
-        void setSpeakerOutputDevice(std::string outputDevice);
-
+        
         /** isAPIConnected() indicates if the API Server connection is up.
          *
          * @return true if the API server connection is good or in the middle of
@@ -156,6 +136,8 @@ namespace afv_native {
          *
          */
         void disconnect();
+                    
+        void tick();
 
         double getInputPeak() const;
         double getInputVu() const;
@@ -175,74 +157,39 @@ namespace afv_native {
          */
         util::ChainedCallback<void(ClientEventType,void*)>  ClientEventCallback;
 
-        /** getStationAliases returns a vector of all the known station aliases.
-         *
-         * @note this method uses a copy in place to prevent race inside the
-         *  client code and consumers and is consequentially expensive.  Please
-         *  only call it after you get a notification of there being a change,
-         *  and even then, only once.
-         */
-        std::vector<afv::dto::Station> getStationAliases() const;
+  
         std::map<std::string, std::vector<afv::dto::StationTransceiver>> getStationTransceivers() const;
 
         void startAudio();
         void stopAudio();
 
-        /** logAudioStatistics dumps the internal data about over/underflow totals to the AFV log.
-         *
-         */
-        void logAudioStatistics();
-
-        std::shared_ptr<const audio::AudioDevice> getAudioDevice() const;
-
-        /** getRxActive returns if the nominated radio is currently Receiving voice, irrespective as to if it's audiable
-         * or not.
-         *
-         * @param radioNumber the number (starting from 0) of the radio to probe
-         * @return true if the radio would have voice to play, false otherwise.
-         */
-        bool getRxActive(unsigned int radioNumber);
-
-        /** getTxActive returns if the nominated radio is currently Transmitting voice.
-         *
-         * @param radioNumber the number (starting from 0) of the radio to probe
-         * @return true if the radio is transmitting from the mic, false otherwise.
-         */
-        bool getTxActive(unsigned int radioNumber);
-        
-        /** requestStationTransceivers requests the list of transceivers associated with the named station
-         *
-         *  @param inStation the name of the station to list the transceivers
-         */
-        void requestStationTransceivers(std::string inStation);
-        
-        void addFrequency(unsigned int freq, bool onHeadset);
-        void linkTransceivers(std::string callsign, unsigned int freq);
-        
-        void setTick(std::shared_ptr<audio::ITick> tick);
-        
-
+        void putAudioFrame(const audio::SampleType *bufferIn);
+       
+    
     protected:
 
         struct event_base *mEvBase;
-        std::shared_ptr<afv::EffectResources> mFxRes;
+        
 
         http::EventTransferManager mTransferManager;
         afv::APISession mAPISession;
         afv::VoiceSession mVoiceSession;
-        std::shared_ptr<afv::ATCRadioStack> mATCRadioStack;
-        std::shared_ptr<audio::AudioDevice> mAudioDevice;
-        std::shared_ptr<audio::AudioDevice> mSpeakerDevice;
         
+        void processCompressedFrame(std::vector<unsigned char> compressedData);
+
+        double mClientLatitude;
+        double mClientLongitude;
+        double mClientAltitudeMSLM;
+        double mClientAltitudeGLM;
+        unsigned int mFrequency;
+
 
         std::string mCallsign;
 
         void sessionStateCallback(afv::APISessionState state);
         void voiceStateCallback(afv::VoiceSessionState state);
 
-        bool mTxUpdatePending;
-        bool mWantPtt;
-        bool mPtt;
+     
 
         
         std::vector<afv::dto::Transceiver> makeTransceiverDto();
@@ -255,23 +202,26 @@ namespace afv_native {
         void queueTransceiverUpdate();
         void stopTransceiverUpdate();
 
-        void aliasUpdateCallback();
-        void stationTransceiversUpdateCallback();
-        
-    private:
-        void unguardPtt();
+  
+
     protected:
-        event::EventCallbackTimer mTransceiverUpdateTimer;
-        
+                    event::EventCallbackTimer mTransceiverUpdateTimer;
+                    cryptodto::UDPChannel *mChannel;
+                    std::atomic<uint32_t> mTxSequence;
+                    std::shared_ptr<afv::VoiceCompressionSink> mVoiceSink;
+                    std::shared_ptr<audio::SpeexPreprocessor> mVoiceFilter;
+                    std::shared_ptr<audio::WavSampleStorage> mWavSampleStorage;
+                    std::shared_ptr<audio::RecordedSampleSource> mRecordedSampleSource;
+                    std::shared_ptr<audio::SourceToSinkAdapter> mAdapter;
+
+                    
 
         std::string mClientName;
-        audio::AudioDevice::Api mAudioApi;
-        std::string mAudioInputDeviceName;
-        std::string mAudioOutputDeviceName;
-        std::string mAudioSpeakerDeviceName;
+                    std::string mATISFileName;
+
         
     public:
     };
 }
 
-#endif /* atcClient_h */
+#endif /* atisClient_h */

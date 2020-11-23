@@ -4,7 +4,7 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" OFF)
+option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" ON)
 option(BUILD_TESTS "Build Test Suite (requires Google Test)" OFF)
 
 
@@ -37,6 +37,7 @@ endif()
 
 set(AFV_NATIVE_HEADERS
         include/afv-native/atcClient.h
+        include/afv-native/atisClient.h
 		include/afv-native/Client.h
 		include/afv-native/event.h
 		include/afv-native/Log.h
@@ -73,12 +74,14 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/audio/ISampleSink.h
 		include/afv-native/audio/ISampleSource.h
 		include/afv-native/audio/ISampleStorage.h
+        include/afv-native/audio/ITick.h
 		include/afv-native/audio/OutputMixer.h
 		include/afv-native/audio/PinkNoiseGenerator.h
 		include/afv-native/audio/RecordedSampleSource.h
 		include/afv-native/audio/SineToneSource.h
 		include/afv-native/audio/SinkFrameSizeAdjuster.h
 		include/afv-native/audio/SourceFrameSizeAdjuster.h
+        include/afv-native/audio/SourceToSinkAdapter.h
 		include/afv-native/audio/SpeexPreprocessor.h
 		include/afv-native/audio/VHFFilterSource.h
 		include/afv-native/audio/WavFile.h
@@ -124,11 +127,13 @@ set(AFV_NATIVE_SOURCES
 		src/audio/SineToneSource.cpp
 		src/audio/SinkFrameSizeAdjuster.cpp
 		src/audio/SourceFrameSizeAdjuster.cpp
+        src/audio/SourceToSinkAdapter.cpp
 		src/audio/SpeexPreprocessor.cpp
 		src/audio/VHFFilterSource.cpp
 		src/audio/WavFile.cpp
 		src/audio/WavSampleStorage.cpp
         src/core/atcClient.cpp
+        src/core/atisClient.cpp
 		src/core/Client.cpp
 		src/core/Log.cpp
 		src/cryptodto/Channel.cpp

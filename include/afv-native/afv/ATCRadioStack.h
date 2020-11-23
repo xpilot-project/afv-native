@@ -23,6 +23,7 @@
 #include "afv-native/afv/dto/StationTransceiver.h"
 //#include "afv-native/audio/ISampleSink.h"
 #include "afv-native/audio/ISampleSource.h"
+#include "afv-native/audio/ITick.h"
 //#include "afv-native/audio/OutputMixer.h"
 #include "afv-native/audio/PinkNoiseGenerator.h"
 #include "afv-native/audio/SineToneSource.h"
@@ -116,7 +117,7 @@ namespace afv_native {
             void setRT(bool active);
             void setUDPChannel(cryptodto::UDPChannel *newChannel);
             void setCallsign(const std::string &newCallsign);
-            
+            void setClientPosition(double lat, double lon, double amslm, double aglm);
             void addFrequency(unsigned int freq, bool onHeadset);
             
             bool getTxActive(unsigned int freq);
@@ -124,6 +125,8 @@ namespace afv_native {
             
             void setRx(unsigned int freq, bool rx);
             void setTx(unsigned int freq, bool tx);
+            
+            void setTick(std::shared_ptr<audio::ITick> tick);
             
             void setTransceivers(unsigned int freq, std::vector<afv::dto::StationTransceiver> transceivers);
             std::vector<afv::dto::Transceiver> makeTransceiverDto();
@@ -139,7 +142,7 @@ namespace afv_native {
             std::shared_ptr<audio::ISampleSource> headsetDevice() { return mHeadsetDevice; }
             
             audio::SourceStatus getAudioFrame(audio::SampleType *bufferOut, bool onHeadset);
-            void putAudioFrame(const audio::SampleType *bufferIn, unsigned int inPort = 0) override;
+            void putAudioFrame(const audio::SampleType *bufferIn) override;
             
             double getVu() const;
             double getPeak() const;
@@ -170,6 +173,9 @@ namespace afv_native {
             std::shared_ptr<OutputAudioDevice> mHeadsetDevice;
             std::shared_ptr<OutputAudioDevice> mSpeakerDevice;
             
+            std::shared_ptr<audio::ITick> mTick;
+            
+            
             
             std::atomic<uint32_t> mTxSequence;
             std::shared_ptr<VoiceCompressionSink> mVoiceSink;
@@ -183,7 +189,11 @@ namespace afv_native {
             void processCompressedFrame(std::vector<unsigned char> compressedData) override;
             void maintainIncomingStreams();
             
-            
+            double mClientLatitude;
+            double mClientLongitude;
+            double mClientAltitudeMSLM;
+            double mClientAltitudeGLM;
+
             
             void resetRadioFx(unsigned int radio, bool except_click = false);
             bool mix_effect(std::shared_ptr<audio::ISampleSource> effect, float gain, std::shared_ptr<OutputDeviceState> state);
