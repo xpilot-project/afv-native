@@ -120,7 +120,6 @@ SourceStatus RemoteVoiceSource::getAudioFrame(SampleType *bufferOut)
     if (mDecoder != nullptr) {
         switch (jitter_status) {
         case JITTER_BUFFER_MISSING:
-                LOG("instreambuffer", "Jitter Buffer Missing! ");
             mCurrentFrame++;
             if (mEnding && (mCurrentFrame >= mEndingSequence)) {
                 ::memset(bufferOut, 0, frameSizeSamples * sizeof(SampleType));
@@ -131,7 +130,6 @@ SourceStatus RemoteVoiceSource::getAudioFrame(SampleType *bufferOut)
             }
             break;
         case JITTER_BUFFER_INSERTION:
-                LOG("instreambuffer", "Jitter Buffer insertion! ");
             // insert silence.
             ::memset(bufferOut, 0, frameSizeSamples * sizeof(SampleType));
             break;
@@ -144,6 +142,7 @@ SourceStatus RemoteVoiceSource::getAudioFrame(SampleType *bufferOut)
                     bufferOut,
                     frameSizeSamples,
                     false);
+                ::free(pktOut.data);
             break;
         default:
             LOG("instreambuffer", "Got Error return from the jitter buffer: %d", jitter_status);

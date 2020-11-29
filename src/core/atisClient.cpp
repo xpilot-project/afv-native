@@ -30,6 +30,7 @@ ATISClient::ATISClient(
         std::string baseUrl):
         mEvBase(evBase),
         mTransferManager(mEvBase),
+        mVoiceSink(std::make_shared<VoiceCompressionSink>(*this)),
         mAPISession(mEvBase, mTransferManager, std::move(baseUrl)),
         mVoiceSession(mAPISession),
         mClientLatitude(0.0),
