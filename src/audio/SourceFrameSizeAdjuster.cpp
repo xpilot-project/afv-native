@@ -35,7 +35,7 @@
 #include <memory>
 #include <algorithm>
 #include <cstring>
-#include <xmmintrin.h>
+//#include <xmmintrin.h>
 
 using namespace afv_native::audio;
 using namespace std;
