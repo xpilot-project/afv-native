@@ -96,7 +96,7 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/util/ChainedCallback.h
 		include/afv-native/util/monotime.h
 		)
-add_library(afv_native
+add_library(afv_native SHARED
 		${AFV_NATIVE_HEADERS}
 		src/afv/APISession.cpp
 		src/afv/EffectResources.cpp
@@ -111,6 +111,7 @@ add_library(afv_native
 		src/afv/dto/VoiceServerConnectionData.cpp
 		src/audio/AudioDevice.cpp
 		src/audio/FilterSource.cpp
+		src/audio/BiQuadFilter.cpp
 		src/audio/OutputMixer.cpp
 		src/audio/RecordedSampleSource.cpp
 		src/audio/SineToneSource.cpp
@@ -121,10 +122,10 @@ add_library(afv_native
 		src/audio/WavSampleStorage.cpp
 		src/core/Client.cpp
 		src/core/Log.cpp
-        src/cryptodto/Channel.cpp
-        src/cryptodto/SequenceTest.cpp
+		src/cryptodto/Channel.cpp
+		src/cryptodto/SequenceTest.cpp
 		src/cryptodto/UDPChannel.cpp
-        src/cryptodto/dto/ChannelConfig.cpp
+		src/cryptodto/dto/ChannelConfig.cpp
 		src/cryptodto/dto/Header.cpp
 		src/event/EventCallbackTimer.cpp
 		src/event/EventTimer.cpp
@@ -132,7 +133,7 @@ add_library(afv_native
 		src/http/TransferManager.cpp
 		src/http/Request.cpp
 		src/http/RESTRequest.cpp
-        src/util/base64.cpp
+		src/util/base64.cpp
 		src/util/monotime.cpp
 		${AFV_NATIVE_AUDIO_SOURCES}
 		extern/simpleSource/SimpleComp.cpp
@@ -145,17 +146,44 @@ add_library(afv_native
 		extern/simpleSource/SimpleHeader.h
 		extern/simpleSource/SimpleLimit.cpp
 		extern/simpleSource/SimpleLimit.h
-		src/audio/VHFFilterSource.cpp)
+		src/audio/VHFFilterSource.cpp
+		src/NativeWrapper.cpp)
+
+if(APPLE)
+find_library(CORE_AUDIO CoreAudio)
+find_library(AUDIO_TOOLBOX AudioToolbox)
+find_library(AUDIO_UNIT AudioUnit)
+find_library(CORE_FOUNDATION CoreFoundation)
+find_library(CORE_SERVICES CoreServices)
+
 target_link_libraries(afv_native
-        PUBLIC
-        CONAN_PKG::openssl
-        CONAN_PKG::msgpack
-        CONAN_PKG::jsonformoderncpp
-        CONAN_PKG::libcurl
-        CONAN_PKG::libevent
-        CONAN_PKG::libopus
-		CONAN_PKG::speexdsp
-		${AFV_NATIVE_AUDIO_LIBRARIES})
+	PUBLIC
+	CONAN_PKG::openssl
+	CONAN_PKG::msgpack
+	CONAN_PKG::jsonformoderncpp
+	CONAN_PKG::libcurl
+	CONAN_PKG::libevent
+	CONAN_PKG::libopus
+	CONAN_PKG::speexdsp
+	${AFV_NATIVE_AUDIO_LIBRARIES}
+	${CORE_AUDIO}
+	${AUDIO_TOOLBOX}
+	${AUDIO_UNIT}
+	${CORE_FOUNDATION}
+	${CORE_SERVICES})
+else()
+target_link_libraries(afv_native
+	PUBLIC
+	CONAN_PKG::openssl
+	CONAN_PKG::msgpack
+	CONAN_PKG::jsonformoderncpp
+	CONAN_PKG::libcurl
+	CONAN_PKG::libevent
+	CONAN_PKG::libopus
+	CONAN_PKG::speexdsp
+	${AFV_NATIVE_AUDIO_LIBRARIES})
+endif()
+
 target_include_directories(afv_native
 		PRIVATE
 		${CMAKE_SOURCE_DIR}/extern/cpp-jwt/include
