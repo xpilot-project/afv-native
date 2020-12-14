@@ -38,7 +38,7 @@ class AfvNativeConan(ConanFile):
         "libcurl/[~7.68.0]",
         "libevent/[~2.1.11]",
         "libopus/1.3.1@xsquawkbox/devel",
-        "speexdsp/1.2.0@xsquawkbox/devel",
+        "speexdsp/0.1@xpilot-project/stable",
     ]
     build_requires = [
     ]
@@ -76,7 +76,7 @@ class AfvNativeConan(ConanFile):
         if self.options.audio_library == "soundio":
             self.requires("libsoundio/2.0.0@xsquawkbox/devel")
         elif self.options.audio_library == "portaudio":
-            self.requires("portaudio/v190600.20161030@xsquawkbox/stable")
+            self.requires("portaudio/v190600.20161030@bincrafters/stable")
 
     def build_requirements(self):
         if self.options.build_examples:
