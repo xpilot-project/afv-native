@@ -64,12 +64,15 @@ namespace afv_native {
             unsigned int Frequency;
             float Gain;
             std::shared_ptr<audio::RecordedSampleSource> Click;
-            std::shared_ptr<audio::PinkNoiseGenerator> WhiteNoise;
             std::shared_ptr<audio::RecordedSampleSource> Crackle;
+            std::shared_ptr<audio::RecordedSampleSource> AcBus;
+            std::shared_ptr<audio::RecordedSampleSource> VhfWhiteNoise;
+            std::shared_ptr<audio::RecordedSampleSource> HfWhiteNoise;
             std::shared_ptr<audio::SineToneSource> BlockTone;
             audio::VHFFilterSource vhfFilter;
             int mLastRxCount;
             bool mBypassEffects;
+            bool mHfSquelch;
         };
 
         /** CallsignMeta is the per-packetstream metadata stored within the RadioSimulation object.
@@ -123,6 +126,7 @@ namespace afv_native {
             void setEnableInputFilters(bool enableInputFilters);
 
             void setEnableOutputEffects(bool enableEffects);
+            void setEnableHfSquelch(bool enableHfSquelch);
 
             void putAudioFrame(const audio::SampleType *bufferIn) override;
             audio::SourceStatus getAudioFrame(audio::SampleType *bufferOut) override;
@@ -182,7 +186,7 @@ namespace afv_native {
 
             void resetRadioFx(unsigned int radio, bool except_click = false);
 
-            void set_radio_effects(size_t rxIter, float crackleGain, float &whiteNoiseGain);
+            void set_radio_effects(size_t rxIter);
 
             bool mix_effect(std::shared_ptr<audio::ISampleSource> effect, float gain);
 

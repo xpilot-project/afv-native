@@ -190,6 +190,7 @@ namespace afv_native {
         bool getEnableInputFilters() const;
         void setEnableInputFilters(bool enableInputFilters);
         void setEnableOutputEffects(bool enableEffects);
+        void setEnableHfSquelch(bool enableSquelch);
 
         /** ClientEventCallback provides notifications when certain client events occur.  These can be used to
          * provide feedback within the client itself without needing to poll Client's methods.

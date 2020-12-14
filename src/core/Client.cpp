@@ -447,6 +447,11 @@ void Client::setEnableOutputEffects(bool enableEffects)
     mRadioSim->setEnableOutputEffects(enableEffects);
 }
 
+void Client::setEnableHfSquelch(bool enableSquelch)
+{
+    mRadioSim->setEnableHfSquelch(enableSquelch);
+}
+
 void Client::aliasUpdateCallback()
 {
     ClientEventCallback.invokeAll(ClientEventType::StationAliasesUpdated, nullptr);

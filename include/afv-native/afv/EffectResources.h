@@ -45,6 +45,9 @@ namespace afv_native {
         public:
             std::shared_ptr<audio::ISampleStorage> mCrackle;
             std::shared_ptr<audio::ISampleStorage> mClick;
+            std::shared_ptr<audio::ISampleStorage> mAcBus;
+            std::shared_ptr<audio::ISampleStorage> mVhfWhiteNoise;
+            std::shared_ptr<audio::ISampleStorage> mHfWhiteNoise;
 
             explicit EffectResources(const std::string &basePath);
         };

@@ -45,13 +45,12 @@
 using namespace afv_native;
 using namespace afv_native::afv;
 
-const float fxClickGain = 1.0f;
-
-const float fxBlockToneGain = 0.22f;
-
-const float fxWhiteNoiseGain = 0.01f;
-
+const float fxClickGain = 1.1f;
+const float fxBlockToneGain = 0.13f;
 const float fxBlockToneFreq = 180.0f;
+const float fxAcBusGain = 0.0028f;
+const float fxVhfWhiteNoiseGain = 0.17f;
+const float fxHfWhiteNoiseGain = 0.16f;
 
 CallsignMeta::CallsignMeta():
         source(),
@@ -194,6 +193,9 @@ bool RadioSimulation::_process_radio(
     }
     // now, find all streams that this applies to.
     float crackleGain = 0.0f;
+    float hfGain = 0.0f;
+    float vhfGain = 0.0f;
+    float acBusGain = 0.0f;
     uint32_t concurrentStreams = 0;
     for (auto &srcPair: mIncomingStreams) {
         if (!srcPair.second.source || !srcPair.second.source->isActive() ||
@@ -208,12 +210,32 @@ bool RadioSimulation::_process_radio(
 
                 float crackleFactor = 0.0f;
                 if (!mRadioState[rxIter].mBypassEffects) {
-                    crackleFactor = static_cast<float>(
-                            (exp(tx.DistanceRatio) * pow(tx.DistanceRatio, -2.5) / 350.0) - 0.00776652);
+                    crackleFactor = static_cast<float>((exp(tx.DistanceRatio) * pow(tx.DistanceRatio, -4.0) / 350.0) - 0.00776652);
                     crackleFactor = fmax(0.0f, crackleFactor);
-                    crackleFactor = fmin(0.15f, crackleFactor);
+                    crackleFactor = fmin(0.20f, crackleFactor);
 
-                    crackleGain += crackleFactor;
+                    if (freqIsHF(tx.Frequency))
+                    {
+                        if (mRadioState[rxIter].mHfSquelch)
+                        {
+                            hfGain = fxHfWhiteNoiseGain;
+                        }
+                        else
+                        {
+                            hfGain = 0.0f;
+                        }
+                        vhfGain = 0.0f;
+                        acBusGain = fxAcBusGain + 0.001f;
+                        voiceGain = 0.38f;
+                    }
+                    else
+                    {
+                        hfGain = 0.0f;
+                        vhfGain = fxVhfWhiteNoiseGain;
+                        acBusGain = fxAcBusGain;
+                        crackleGain += crackleFactor * 2;
+                        voiceGain = 1.0 - crackleFactor * 3.7;
+                    }
                 }
                 break; // matched once.  dont' bother anymore.
             }
@@ -238,13 +260,22 @@ bool RadioSimulation::_process_radio(
             // but don't interfere with the effects.
             mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
 
-            float whiteNoiseGain = 0.0f;
-            set_radio_effects(rxIter, crackleGain, whiteNoiseGain);
-            if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain)) {
+            set_radio_effects(rxIter);
+            if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain))
+            {
                 mRadioState[rxIter].Crackle.reset();
             }
-            if (!mix_effect(mRadioState[rxIter].WhiteNoise, whiteNoiseGain * mRadioState[rxIter].Gain)) {
-                mRadioState[rxIter].WhiteNoise.reset();
+            if (!mix_effect(mRadioState[rxIter].HfWhiteNoise, hfGain * mRadioState[rxIter].Gain))
+            {
+                mRadioState[rxIter].HfWhiteNoise.reset();
+            }
+            if (!mix_effect(mRadioState[rxIter].VhfWhiteNoise, vhfGain * mRadioState[rxIter].Gain))
+            {
+                mRadioState[rxIter].VhfWhiteNoise.reset();
+            }
+            if (!mix_effect(mRadioState[rxIter].AcBus, acBusGain * mRadioState[rxIter].Gain))
+            {
+                mRadioState[rxIter].AcBus.reset();
             }
         } // bypass effects
         if (concurrentStreams > 1) {
@@ -309,20 +340,23 @@ audio::SourceStatus RadioSimulation::getAudioFrame(audio::SampleType *bufferOut)
     return audio::SourceStatus::OK;
 }
 
-void RadioSimulation::set_radio_effects(size_t rxIter, float crackleGain, float &whiteNoiseGain)
+void RadioSimulation::set_radio_effects(size_t rxIter)
 {
-    whiteNoiseGain = fxWhiteNoiseGain;
-    if (whiteNoiseGain > 0.0f) {
-        if (!mRadioState[rxIter].WhiteNoise) {
-            mRadioState[rxIter].WhiteNoise = std::make_shared<audio::PinkNoiseGenerator>();
-        }
+    if (!mRadioState[rxIter].VhfWhiteNoise)
+    {
+        mRadioState[rxIter].VhfWhiteNoise = std::make_shared<audio::RecordedSampleSource>(mResources->mVhfWhiteNoise, true);
     }
-    if (crackleGain > 0.0f) {
-        if (!mRadioState[rxIter].Crackle) {
-            mRadioState[rxIter].Crackle = std::make_shared<audio::RecordedSampleSource>(
-                    mResources->mCrackle,
-                    true);
-        }
+    if (!mRadioState[rxIter].HfWhiteNoise)
+    {
+        mRadioState[rxIter].HfWhiteNoise = std::make_shared<audio::RecordedSampleSource>(mResources->mHfWhiteNoise, true);
+    }
+    if (!mRadioState[rxIter].Crackle)
+    {
+        mRadioState[rxIter].Crackle = std::make_shared<audio::RecordedSampleSource>(mResources->mCrackle, true);
+    }
+    if (!mRadioState[rxIter].AcBus)
+    {
+        mRadioState[rxIter].AcBus = std::make_shared<audio::RecordedSampleSource>(mResources->mAcBus, true);
     }
 }
 
@@ -376,6 +410,9 @@ void RadioSimulation::resetRadioFx(unsigned int radio, bool except_click)
     }
     mRadioState[radio].BlockTone.reset();
     mRadioState[radio].Crackle.reset();
+    mRadioState[radio].VhfWhiteNoise.reset();
+    mRadioState[radio].HfWhiteNoise.reset();
+    mRadioState[radio].AcBus.reset();
 }
 
 void RadioSimulation::setPtt(bool pressed)
@@ -506,5 +543,13 @@ void RadioSimulation::setEnableOutputEffects(bool enableEffects)
 {
     for (auto &thisRadio: mRadioState) {
         thisRadio.mBypassEffects = !enableEffects;
+    }
+}
+
+void RadioSimulation::setEnableHfSquelch(bool enableSquelch)
+{
+    for (auto& thisRadio : mRadioState)
+    {
+        thisRadio.mHfSquelch = enableSquelch;
     }
 }
