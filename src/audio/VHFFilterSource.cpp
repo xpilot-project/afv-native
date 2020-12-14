@@ -37,10 +37,7 @@
 using namespace afv_native::audio;
 
 VHFFilterSource::VHFFilterSource():
-        compressor(new chunkware_simple::SimpleComp()),
-        highPass(BiQuadFilter::highPassFilter(450.0f, 1.0f)),
-        lowPass(BiQuadFilter::lowPassFilter(3000.0f, 1.0f)),
-        peakingEq(BiQuadFilter::peakingEqFilter(2200.0f, 0.25f, 13.0f))
+    compressor(new chunkware_simple::SimpleComp())
 {
     compressor->setSampleRate(sampleRateHz);
     compressor->setAttack(5.0);
@@ -49,6 +46,8 @@ VHFFilterSource::VHFFilterSource():
     compressor->setRatio(6);
     compressor->initRuntime();
     compressorPostGain = pow(10.0f, (-5.5/20.0));
+    
+    setupPresets();
 }
 
 VHFFilterSource::~VHFFilterSource()
@@ -56,20 +55,30 @@ VHFFilterSource::~VHFFilterSource()
     delete compressor;
 };
 
+void VHFFilterSource::setupPresets()
+{
+    mFilters.push_back(BiQuadFilter::highPassFilter(44100, 310, 0.25));
+    mFilters.push_back(BiQuadFilter::peakingEQ(44100, 450, 0.75, 17.0));
+    mFilters.push_back(BiQuadFilter::peakingEQ(44100, 1450, 1.0, 25.0));
+    mFilters.push_back(BiQuadFilter::peakingEQ(44100, 2000, 1.0, 25.0));
+    mFilters.push_back(BiQuadFilter::lowPassFilter(44100, 2500, 0.25));
+}
+
 /** transformFrame lets use apply this filter to a normal buffer, without following the sink/source flow.
  *
  * It always performs a copy of the data from In to Out at the very least.
  */
 void VHFFilterSource::transformFrame(SampleType *bufferOut, SampleType const bufferIn[]) {
-    SampleType s = 0;
     double sl, sr;
     for (unsigned i = 0; i < frameSizeSamples; i++) {
         sl = bufferIn[i];
         sr = sl;
         compressor->process(sl, sr);
-        s = highPass.TransformOne(sl * compressorPostGain);
-        s = peakingEq.TransformOne(s);
-        s = lowPass.TransformOne(s);
-        bufferOut[i] = s;
+        for (int band = 0; band < mFilters.size(); band++)
+        {
+            sl = mFilters[band].TransformOne(sl);
+        }
+        sl *= static_cast<float>(compressorPostGain);
+        bufferOut[i] = sl;
     }
 }

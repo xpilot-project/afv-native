@@ -41,140 +41,31 @@
 
 namespace afv_native {
     namespace audio {
-        /**
-         * @note The BiQuadFilter is designed off of the work by Robert Bristow-Johnson as published in his
-         * "Cookbook formulae for audio EQ biquad filter coefficients" as found on https://www.musicdsp.org/
-         */
         class BiQuadFilter : public IFilter {
         public:
-            constexpr BiQuadFilter(float a0, float a1, float a2, float b0, float b1, float b2) :
-                    mA0(a0),
-                    mA1(a1),
-                    mA2(a2),
-                    mB0(b0),
-                    mB1(b1),
-                    mB2(b2),
-                    mHistoryIn{0, 0, 0},
-                    mHistoryOut{0, 0, 0},
-                    hpos(0) {}
+           BiQuadFilter() = default;
 
-            SampleType TransformOne(SampleType sampleIn) override {
-                hpos %= 3;
-                mHistoryIn[hpos] = sampleIn;
-                mHistoryOut[hpos] = (mB0 / mA0) * mHistoryIn[hpos]
-                                    + (mB1 / mA0) * mHistoryIn[(hpos + 2) % 3]
-                                    + (mB2 / mA0) * mHistoryIn[(hpos + 1) % 3]
-                                    - (mA1 / mA0) * mHistoryIn[(hpos + 2) % 3]
-                                    - (mA2 / mA0) * mHistoryIn[(hpos + 1) % 3];
-                return mHistoryOut[hpos++];
-            }
+            SampleType TransformOne(SampleType sampleIn);
 
-            static BiQuadFilter lowPassFilter(float f0, float q) {
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
-                return BiQuadFilter(
-                        1.0f + alpha,
-                        -2.0f * cosw0,
-                        1.0f - alpha,
-                        (1.0f - cosw0) / 2.0f,
-                        1.0f - cosw0,
-                        (1.0f - cosw0) / 2.0f);
-            }
+            void setCoefficients(double aa0, double aa1, double aa2, double b0, double b1, double b2);
+            void setLowPassFilter(float sampleRate, float cutoffFrequency, float q);
+            void setPeakingEq(float sampleRate, float centreFrequency, float q, float dbGain);
+            void setHighPassFilter(float sampleRate, float cutoffFrequency, float q);
 
-            static BiQuadFilter highPassFilter(float f0, float q) {
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
+            static BiQuadFilter lowPassFilter(float sampleRate, float cutoffFrequency, float q);
+            static BiQuadFilter highPassFilter(float sampleRate, float cutoffFrequency, float q);
+            static BiQuadFilter peakingEQ(float sampleRate, float centreFrequency, float q, float dbGain);
+        private:
+            double m_a0 = 0.0;
+            double m_a1 = 0.0;
+            double m_a2 = 0.0;
+            double m_a3 = 0.0;
+            double m_a4 = 0.0;
 
-                return BiQuadFilter(
-                        1.0f + alpha,
-                        -2.0f * cosw0,
-                        1.0f - alpha,
-                        (1.0f + cosw0) / 2.0f,
-                        -(1.0f + cosw0),
-                        (1.0f + cosw0) / 2.0f);
-            }
-
-            static BiQuadFilter bandPassFilter(float f0, float q) {
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
-
-                return BiQuadFilter(
-                        1.0f + alpha,
-                        -2.0f * cosw0,
-                        1.0f - alpha,
-                        q * alpha,
-                        0.0f,
-                        -q * alpha);
-            }
-
-            static BiQuadFilter notchFilter(float f0, float q) {
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
-
-                return BiQuadFilter(
-                        1.0f + alpha,
-                        -2.0f * cosw0,
-                        1.0f - alpha,
-                        1.0f,
-                        -2.0f * cosw0,
-                        1.0f);
-            }
-
-            static BiQuadFilter peakingEqFilter(float f0, float q, float dbGain) {
-                float a = pow(10.0f, dbGain / 40.0f);
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
-
-                return BiQuadFilter(
-                        1.0f + (alpha / a),
-                        -2.0f * cosw0,
-                        1.0f - (alpha / a),
-                        1.0f + (alpha * a),
-                        -2.0f * cosw0,
-                        1.0f - (alpha * a));
-            }
-
-            static BiQuadFilter lowShelfFilter(float f0, float q, float dbGain) {
-                float a = pow(10.0f, dbGain / 40.0f);
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
-
-                return BiQuadFilter(
-                        (a + 1.0f) + (a - 1.0f) * cosw0 + 2.0f * sqrt(a) * alpha,
-                        -2.0f * ((a - 1.0f) + (a + 1.0f) * cosw0),
-                        (a + 1.0f) + (a - 1.0f) * cosw0 - 2.0f * sqrt(a) * alpha,
-                        a * ((a + 1.0f) - (a - 1.0f) * cosw0 + 2.0f * sqrt(a) * alpha),
-                        2.0f * a * ((a - 1.0f) - (a + 1.0f) * cosw0),
-                        a * ((a + 1.0f) - (a - 1.0f) * cosw0 - 2.0f * sqrt(a) * alpha));
-            }
-
-            static BiQuadFilter highShelfFilter(float f0, float q, float dbGain) {
-                float a = pow(10.0f, dbGain / 40.0f);
-                float w0 = 2.0f * M_PI * f0 / static_cast<float>(sampleRateHz);
-                float cosw0 = cos(w0);
-                float alpha = sin(w0) / (2 * q);
-
-                return BiQuadFilter(
-                        (a + 1.0f) - (a - 1.0f) * cosw0 + 2.0f * sqrt(a) * alpha,
-                        2.0f * ((a - 1.0f) - (a + 1.0f) * cosw0),
-                        (a + 1.0f) - (a - 1.0f) * cosw0 - 2.0f * sqrt(a) * alpha,
-                        a * ((a + 1.0f) + (a - 1.0f) * cosw0 + 2.0f * sqrt(a) * alpha),
-                        -2.0f * a * ((a - 1.0f) + (a + 1.0f) * cosw0),
-                        a * ((a + 1.0f) + (a - 1.0f) * cosw0 - 2.0f * sqrt(a) * alpha));
-            }
-
-        protected:
-            float mA0, mA1, mA2;
-            float mB0, mB1, mB2;
-            SampleType mHistoryIn[3];
-            SampleType mHistoryOut[3];
-            unsigned int hpos;
+            float m_x1 = 0.0;
+            float m_x2 = 0.0;
+            float m_y1 = 0.0;
+            float m_y2 = 0.0;
         };
     }
 }

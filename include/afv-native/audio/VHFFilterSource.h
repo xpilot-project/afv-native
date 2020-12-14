@@ -35,6 +35,7 @@
 #define AFV_NATIVE_VHFFILTERSOURCE_H
 
 #include <memory>
+#include <vector>
 
 #include <afv-native/audio/BiQuadFilter.h>
 #include <afv-native/audio/ISampleSource.h>
@@ -64,11 +65,11 @@ namespace afv_native {
             void transformFrame(SampleType *bufferOut, SampleType const bufferIn[]);
 
         protected:
+            void setupPresets();
+        
             chunkware_simple::SimpleComp *compressor;
             float compressorPostGain;
-            BiQuadFilter highPass;
-            BiQuadFilter peakingEq;
-            BiQuadFilter lowPass;
+            std::vector<BiQuadFilter> mFilters;
         };
     }
 }
