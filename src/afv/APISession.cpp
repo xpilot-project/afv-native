@@ -362,7 +362,7 @@ void APISession::_stationTransceiversCallback(http::RESTRequest *req, bool succe
         }
     }
     // cleanup and remove
-    mStationTransceiversRequest.reset();
+    //mStationTransceiversRequest.reset();
 }
 
 
