@@ -11,15 +11,14 @@ jobs:
     name: Build
     strategy:
       matrix:
-        #kind: ["linux", "windows", "macos"]
-        kind: ["linux"]
+        kind: ["linux", "windows", "macos"]
         include:
           - kind: linux
             os: ubuntu-latest
-          # - kind: windows
-          #   os: windows-latest
-          # - kind: macos
-          #   os: macos-latest
+          - kind: windows
+            os: windows-latest
+          - kind: macos
+            os: macos-latest
 
     runs-on: ${{ matrix.os }}
 
