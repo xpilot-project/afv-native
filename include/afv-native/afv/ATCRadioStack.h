@@ -92,6 +92,7 @@ namespace afv_native {
             std::shared_ptr<audio::RecordedSampleSource> Crackle;
             std::shared_ptr<audio::SineToneSource> BlockTone;
             audio::VHFFilterSource vhfFilter;
+            std::string lastTransmitCallsign;
             int mLastRxCount;
             bool mBypassEffects;
             bool onHeadset = true; // If we're not on the headset, we're on the Speaker
@@ -137,7 +138,7 @@ namespace afv_native {
             void setEnableInputFilters(bool enableInputFilters);
 
             void setEnableOutputEffects(bool enableEffects);
-            
+            std::string lastTransmitOnFreq(unsigned int freq);
             std::shared_ptr<audio::ISampleSource> speakerDevice() { return mSpeakerDevice; }
             std::shared_ptr<audio::ISampleSource> headsetDevice() { return mHeadsetDevice; }
             

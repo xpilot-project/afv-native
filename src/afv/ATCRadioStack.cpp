@@ -318,7 +318,11 @@ bool ATCRadioStack::_packetListening(const afv::dto::AudioRxOnTransceivers &pkt)
     //std::lock_guard<std::mutex> radioStateLock(mRadioStateLock);
     for (auto trans: pkt.Transceivers)
     {
-        if(mRadioState[trans.Frequency].rx) return true;
+        if(mRadioState[trans.Frequency].rx) {
+            mRadioState[trans.Frequency].lastTransmitCallsign=pkt.Callsign;
+            return true;
+        }
+        
     }
     
     return false;    
@@ -497,7 +501,11 @@ double ATCRadioStack::getPeak() const
 {
     return std::max(-40.0, mVuMeter.getMax());
 }
-
+std::string ATCRadioStack::lastTransmitOnFreq(unsigned int freq)
+{
+    //std::lock_guard<std::mutex> mRadioStateGuard(mRadioStateLock);
+    return mRadioState[freq].lastTransmitCallsign;
+}
 bool ATCRadioStack::getTxActive(unsigned int freq)
 {
     std::lock_guard<std::mutex> mRadioStateGuard(mRadioStateLock);

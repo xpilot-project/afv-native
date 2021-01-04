@@ -184,7 +184,7 @@ namespace afv_native {
          */
         std::vector<afv::dto::Station> getStationAliases() const;
         std::map<std::string, std::vector<afv::dto::StationTransceiver>> getStationTransceivers() const;
-
+        std::string lastTransmitOnFreq(unsigned int freq);
         void startAudio();
         void stopAudio();
 
