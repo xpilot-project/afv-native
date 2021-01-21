@@ -66,6 +66,7 @@ RadioSimulation::RadioSimulation(
         unsigned int radioCount):
         IncomingAudioStreams(0),
         AudiableAudioStreams(nullptr),
+        RadioStateCallback(),
         mEvBase(evBase),
         mResources(std::move(resources)),
         mChannel(),
@@ -254,6 +255,19 @@ bool RadioSimulation::_process_radio(
         }
     }
     AudiableAudioStreams[rxIter].store(concurrentStreams);
+
+    if (!mRadioState[rxIter].mIsReceiving && AudiableAudioStreams[rxIter].load() > 0)
+    {
+        mRadioState[rxIter].mIsReceiving = true;
+        mLastReceivedRadio = rxIter;
+        RadioStateCallback.invokeAll(afv::RadioSimulationState::RxStarted);
+    }
+    else if (mRadioState[rxIter].mIsReceiving && AudiableAudioStreams[rxIter].load() <= 0)
+    {
+        mRadioState[rxIter].mIsReceiving = false;
+        RadioStateCallback.invokeAll(afv::RadioSimulationState::RxStopped);
+    }
+
     if (concurrentStreams > 0) {
         if (!mRadioState[rxIter].mBypassEffects) {
             // if FX are enabled, and we muxed any streams, eq the buffer now to apply the bandwidth simulation,
@@ -552,4 +566,9 @@ void RadioSimulation::setEnableHfSquelch(bool enableSquelch)
     {
         thisRadio.mHfSquelch = enableSquelch;
     }
+}
+
+int RadioSimulation::lastReceivedRadio() const
+{
+    return mLastReceivedRadio;
 }

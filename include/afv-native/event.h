@@ -47,6 +47,8 @@ namespace afv_native {
         PttClosed,
         StationAliasesUpdated,
         AudioError,
+        RxStarted,
+        RxStopped
     };
 }
 

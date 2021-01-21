@@ -248,6 +248,7 @@ namespace afv_native {
 
         void sessionStateCallback(afv::APISessionState state);
         void voiceStateCallback(afv::VoiceSessionState state);
+        void radioStateCallback(afv::RadioSimulationState state);
 
         bool mTxUpdatePending;
         bool mWantPtt;

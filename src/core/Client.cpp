@@ -74,6 +74,7 @@ Client::Client(
     mAPISession.StateCallback.addCallback(this, std::bind(&Client::sessionStateCallback, this, std::placeholders::_1));
     mAPISession.AliasUpdateCallback.addCallback(this, std::bind(&Client::aliasUpdateCallback, this));
     mVoiceSession.StateCallback.addCallback(this, std::bind(&Client::voiceStateCallback, this, std::placeholders::_1));
+    mRadioSim->RadioStateCallback.addCallback(this, std::bind(&Client::radioStateCallback, this, std::placeholders::_1));
     // forcibly synchronise the RadioSim state.
     mRadioSim->setTxRadio(0);
     for (size_t i = 0; i < mRadioState.size(); i++) {
@@ -86,6 +87,7 @@ Client::~Client()
     mVoiceSession.StateCallback.removeCallback(this);
     mAPISession.StateCallback.removeCallback(this);
     mAPISession.AliasUpdateCallback.removeCallback(this);
+    mRadioSim->RadioStateCallback.removeCallback(this);
 
     // disconnect the radiosim from the UDP channel so if it's held open by the
     // audio device, it doesn't crash the client.
@@ -237,6 +239,21 @@ void Client::sessionStateCallback(afv::APISessionState state)
     default:
         // ignore the other transitions.
         break;
+    }
+}
+
+void Client::radioStateCallback(afv::RadioSimulationState state)
+{
+    int lastReceivedRadio = mRadioSim->lastReceivedRadio();
+
+    switch (state)
+    {
+        case afv::RadioSimulationState::RxStarted:
+            ClientEventCallback.invokeAll(ClientEventType::RxStarted, &lastReceivedRadio);
+            break;
+        case afv::RadioSimulationState::RxStopped:
+            ClientEventCallback.invokeAll(ClientEventType::RxStopped, &lastReceivedRadio);
+            break;
     }
 }
 

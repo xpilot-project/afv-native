@@ -51,6 +51,7 @@
 #include "afv-native/audio/VHFFilterSource.h"
 #include "afv-native/cryptodto/UDPChannel.h"
 #include "afv-native/event/EventCallbackTimer.h"
+#include "afv-native/util/ChainedCallback.h"
 
 namespace afv_native {
     namespace afv {
@@ -73,6 +74,7 @@ namespace afv_native {
             int mLastRxCount;
             bool mBypassEffects;
             bool mHfSquelch;
+            bool mIsReceiving;
         };
 
         /** CallsignMeta is the per-packetstream metadata stored within the RadioSimulation object.
@@ -84,6 +86,12 @@ namespace afv_native {
             std::shared_ptr<RemoteVoiceSource> source;
             std::vector<dto::RxTransceiver> transceivers;
             CallsignMeta();
+        };
+
+        enum class RadioSimulationState
+        {
+            RxStarted,
+            RxStopped
         };
 
         /** RadioSimulation provides the foundation for handling radio channels and mixing them
@@ -139,6 +147,9 @@ namespace afv_native {
              */
             std::atomic<uint32_t> *AudiableAudioStreams;
 
+            int lastReceivedRadio() const;
+            util::ChainedCallback<void(RadioSimulationState)>  RadioStateCallback;
+
         protected:
             /** maintenanceTimerIntervalMs is the internal in milliseconds between periodic cleanups
              * of the inbound audio frame objects.
@@ -165,6 +176,8 @@ namespace afv_native {
             unsigned int mTxRadio;
             std::atomic<uint32_t> mTxSequence;
             std::vector<RadioState> mRadioState;
+
+            unsigned int mLastReceivedRadio;
 
             /** mChannelBuffer is our single-radio/channel workbuffer - we do our per-channel fx mixing in here before
              * we mix into the mMixingBuffer
