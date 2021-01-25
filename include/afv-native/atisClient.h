@@ -162,6 +162,8 @@ namespace afv_native {
 
         void startAudio();
         void stopAudio();
+                    
+        bool isPlaying();
 
         void putAudioFrame(const audio::SampleType *bufferIn);
        

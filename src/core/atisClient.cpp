@@ -206,6 +206,12 @@ void ATISClient::startAudio()
 
 }
 
+bool ATISClient::isPlaying() {
+    
+    return mAdapter!=nullptr;
+    
+}
+
 void ATISClient::stopAudio()
 {
     mAdapter=nullptr;
