@@ -42,7 +42,10 @@ ATISClient::ATISClient(
         mClientName(clientName),
         ClientEventCallback(),
         mATISFileName(atisFile),
-        mChannel(&mVoiceSession.getUDPChannel())
+        mChannel(&mVoiceSession.getUDPChannel()),
+        looped(false),
+        playCachedData(false)
+        
     
 {
     mAPISession.StateCallback.addCallback(this, std::bind(&ATISClient::sessionStateCallback, this, std::placeholders::_1));
@@ -191,6 +194,7 @@ void ATISClient::sessionStateCallback(afv::APISessionState state)
 
 void ATISClient::startAudio()
 {
+    looped=false;
     auto *wavData = audio::LoadWav(mATISFileName.c_str());
     if (nullptr == wavData) {
         LOG("ATISClient", "failed to load atis wavfile");
@@ -215,6 +219,9 @@ bool ATISClient::isPlaying() {
 void ATISClient::stopAudio()
 {
     mAdapter=nullptr;
+    mRecordedSampleSource.reset();
+    mStoredData.clear();
+    
    
     
 }
@@ -222,6 +229,16 @@ void ATISClient::stopAudio()
 
 void ATISClient::tick()
 {
+    
+    
+    if(playCachedData)
+    {
+        sendCachedFrame();
+        return;
+        
+    }
+    
+    
     if(mAdapter)
     {
         mAdapter->tick();
@@ -357,6 +374,24 @@ void ATISClient::putAudioFrame(const audio::SampleType *bufferIn)
     }
 }
 
+void ATISClient::sendCachedFrame() {
+    if (mChannel != nullptr && mChannel->isOpen()) {
+        dto::AudioTxOnTransceivers audioOutDto;
+        {
+            audioOutDto.Transceivers.emplace_back(0);
+        }
+        audioOutDto.SequenceCounter = std::atomic_fetch_add<uint32_t>(&mTxSequence, 1);
+        audioOutDto.Callsign = mCallsign;
+        audioOutDto.Audio = mStoredData[cacheNum];
+        cacheNum++;
+        if(cacheNum > mStoredData.size()) cacheNum=0;
+        
+        mChannel->sendDto(audioOutDto);
+    }
+    
+    
+}
+
 /** Audio enters here from the Codec Compressor before being sent out on to the network.
  *
  *
@@ -366,6 +401,31 @@ void ATISClient::putAudioFrame(const audio::SampleType *bufferIn)
 void ATISClient::processCompressedFrame(std::vector<unsigned char> compressedData)
 {
     
+    
+    
+    if(mRecordedSampleSource->firstFrame()) {
+        if(looped) {
+            
+            printf("\nATIS LOOPED");
+            playCachedData=true;
+            cacheNum=0;
+            return;
+            
+        }
+        else {
+            printf("\nATIS DATA INIT");
+            
+            looped=true;
+            
+        }
+    }
+    
+    std::vector<unsigned char> temData;
+    if(looped) {
+        temData = compressedData;
+        mStoredData.push_back(temData);
+    }
+    
     if (mChannel != nullptr && mChannel->isOpen()) {
         dto::AudioTxOnTransceivers audioOutDto;
         {
@@ -374,6 +434,7 @@ void ATISClient::processCompressedFrame(std::vector<unsigned char> compressedDat
         audioOutDto.SequenceCounter = std::atomic_fetch_add<uint32_t>(&mTxSequence, 1);
         audioOutDto.Callsign = mCallsign;
         audioOutDto.Audio = std::move(compressedData);
+        
         mChannel->sendDto(audioOutDto);
     }
 }

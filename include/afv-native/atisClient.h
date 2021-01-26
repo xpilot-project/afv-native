@@ -191,7 +191,7 @@ namespace afv_native {
         void sessionStateCallback(afv::APISessionState state);
         void voiceStateCallback(afv::VoiceSessionState state);
 
-     
+        void sendCachedFrame();
 
         
         std::vector<afv::dto::Transceiver> makeTransceiverDto();
@@ -215,6 +215,10 @@ namespace afv_native {
                     std::shared_ptr<audio::WavSampleStorage> mWavSampleStorage;
                     std::shared_ptr<audio::RecordedSampleSource> mRecordedSampleSource;
                     std::shared_ptr<audio::SourceToSinkAdapter> mAdapter;
+                    std::vector<std::vector<unsigned char>> mStoredData;
+                    bool looped;
+                    bool playCachedData;
+                    unsigned int cacheNum;
 
                     
 
