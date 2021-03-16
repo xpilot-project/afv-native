@@ -35,7 +35,6 @@
 #include <memory>
 #include <algorithm>
 #include <cstring>
-#include <xmmintrin.h>
 
 using namespace afv_native::audio;
 using namespace std;
@@ -92,11 +91,11 @@ SourceFrameSizeAdjuster::SourceFrameSizeAdjuster(
         mOriginSource(std::move(originSource)), mDestinationFrameSize(outputFrameSize), mSourceBufferOffset(0)
 {
     const size_t bufferSize = frameSizeSamples * sizeof(SampleType);
-    mSourceBuffer = reinterpret_cast<SampleType *>(_mm_malloc(bufferSize, 16));
+    mSourceBuffer = new SampleType[bufferSize];
     ::memset(mSourceBuffer, 0, bufferSize);
 }
 
 SourceFrameSizeAdjuster::~SourceFrameSizeAdjuster()
 {
-    _mm_free(mSourceBuffer);
+    delete[] mSourceBuffer;
 }
