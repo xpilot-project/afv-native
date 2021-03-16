@@ -45,11 +45,14 @@
 #include "afv-native/util/ChainedCallback.h"
 #include "afv-native/event/EventCallbackTimer.h"
 
-namespace afv_native {
-    namespace afv {
+namespace afv_native
+{
+    namespace afv
+    {
         class VoiceSession;
 
-        enum class APISessionState {
+        enum class APISessionState
+        {
             Disconnected, /// Disconnected state is not authenticated, nor trying to authenticate.
             Connecting, /// Connecting means we've started our attempt to authenticate and may be waiting for a response from the API Server
             Running, /// Running means we have a valid authentication token and can send updates to the API server
@@ -57,7 +60,8 @@ namespace afv_native {
             Error /// Error is only used in the state callback, and is used to inform the callback user that an error that resulted in a disconnect occured.
         };
 
-        enum class APISessionError {
+        enum class APISessionError
+        {
             NoError = 0,
             ConnectionError, // local socket or curl error - see data returned.
             BadRequestOrClientIncompatible, // APIServer 400
@@ -69,16 +73,53 @@ namespace afv_native {
 
         };
 
-        class APISession {
+        class APISession
+        {
+        public:
+            APISession(event_base* evBase, http::TransferManager& tm, std::string baseUrl, std::string clientName);
+
+            const std::string& getUsername() const;
+
+            void setUsername(const std::string& username);
+
+            void setPassword(const std::string& password);
+
+            void setAuthenticationFor(http::Request& r);
+
+            http::TransferManager& getTransferManager() const;
+
+            struct event_base* getEventBase() const;
+
+            APISessionState getState() const;
+
+            const std::string& getBaseUrl() const;
+            void setBaseUrl(std::string newUrl);
+
+            void Connect();
+            void Disconnect();
+
+            APISessionError getLastError() const;
+
+            void updateStationAliases();
+            std::vector<dto::Station> getStationAliases() const;
+
+            /** Callbacks registered against StateCallback will be called whenever
+             * the APISession changes state.
+            */
+            util::ChainedCallback<void(APISessionState)> StateCallback;
+            util::ChainedCallback<void(void)> AliasUpdateCallback;
         protected:
-            struct event_base *mEvBase;
-            http::TransferManager &mTransferManager;
-        private:
-            APISessionState mState;
-        protected:
+            void _authenticationCallback(http::RESTRequest* req, bool success);
+            void _stationsCallback(http::RESTRequest* req, bool success);
+            void setState(APISessionState newState);
+            void raiseError(APISessionError error);
+
+            struct event_base* mEvBase;
+            http::TransferManager& mTransferManager;
             std::string mBaseURL;
             std::string mUsername;
             std::string mPassword;
+            std::string mClientName;
 
             std::string mBearerToken;
 
@@ -90,45 +131,8 @@ namespace afv_native {
 
             http::RESTRequest mStationAliasRequest;
             std::vector<dto::Station> mAliasedStations;
-
-            void _authenticationCallback(http::RESTRequest *req, bool success);
-            void _stationsCallback(http::RESTRequest *req, bool success);
-            void setState(APISessionState newState);
-            void raiseError(APISessionError error);
-        public:
-            /** Callbacks registered against StateCallback will be called whenever
-             * the APISession changes state.
-             *
-             */
-            util::ChainedCallback<void(APISessionState)> StateCallback;
-            util::ChainedCallback<void(void)> AliasUpdateCallback;
-
-            APISession(event_base *evBase, http::TransferManager &tm, std::string baseUrl);
-
-            const std::string &getUsername() const;
-
-            void setUsername(const std::string &username);
-
-            void setPassword(const std::string &password);
-
-            void setAuthenticationFor(http::Request &r);
-
-            http::TransferManager &getTransferManager() const;
-
-            struct event_base *getEventBase() const;
-
-            APISessionState getState() const;
-
-            const std::string &getBaseUrl() const;
-            void setBaseUrl(std::string newUrl);
-
-            void Connect();
-            void Disconnect();
-
-            APISessionError getLastError() const;
-
-            void updateStationAliases();
-            std::vector<dto::Station> getStationAliases() const;
+        private:
+            APISessionState mState;
         };
     }
 }
