@@ -56,7 +56,6 @@ extern "C" {
             while (keepAlive)
             {
                 event_base_loop(ev_base, EVLOOP_NONBLOCK);
-                client->tick();
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         });
