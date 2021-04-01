@@ -25,7 +25,7 @@ ATCClient::ATCClient(
         mFxRes(std::make_shared<afv::EffectResources>(resourceBasePath)),
         mEvBase(evBase),
         mTransferManager(mEvBase),
-        mAPISession(mEvBase, mTransferManager, std::move(baseUrl)),
+        mAPISession(mEvBase, mTransferManager, std::move(baseUrl), clientName),
         mVoiceSession(mAPISession),
         mATCRadioStack(std::make_shared<afv::ATCRadioStack>(mEvBase, mFxRes, &mVoiceSession.getUDPChannel())),
         mAudioDevice(),

@@ -31,7 +31,7 @@ ATISClient::ATISClient(
         mEvBase(evBase),
         mTransferManager(mEvBase),
         mVoiceSink(std::make_shared<VoiceCompressionSink>(*this)),
-        mAPISession(mEvBase, mTransferManager, std::move(baseUrl)),
+        mAPISession(mEvBase, mTransferManager, std::move(baseUrl), clientName),
         mVoiceSession(mAPISession),
         mClientLatitude(0.0),
         mClientLongitude(0.0),

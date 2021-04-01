@@ -63,7 +63,7 @@ APISession::APISession(event_base* evBase, http::TransferManager& tm, std::strin
     mRefreshTokenTimer(mEvBase, std::bind(&APISession::Connect, this)),
     mLastError(APISessionError::NoError),
     mStationAliasRequest(mBaseURL + "/api/v1/stations/aliased", http::Method::GET, nullptr),
-    mState(APISessionState::Disconnected)
+    mState(APISessionState::Disconnected),
 	mStationTransceiversRequest(mBaseURL, http::Method::GET, nullptr),
 	StationTransceiversUpdateCallback()
 {

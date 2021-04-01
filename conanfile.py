@@ -2,7 +2,7 @@ from conans import ConanFile, CMake, tools
 
 class AfvNativeConan(ConanFile):
     name = "AFV-Native"
-    version = "1.1.1"
+    version = "1.2.0"
     license = "3-Clause BSD"
     author = "Chris Collins <kuroneko@sysadninjas.net>"
     url = "https://github.com/xsquawkbox/AFV-Native"
@@ -20,11 +20,11 @@ class AfvNativeConan(ConanFile):
         "shared": False,
         "fPIC": True,
         "audio_library": "portaudio",
-        "build_examples": True,
+        "build_examples": False,
         "build_tests": False,
         "*:shared": False,
         "*:fPIC": True,
-        "libcurl:with_openssl": True,
+        "libcurl:with_ssl": "openssl",
         "libevent:with_openssl": False,
         "libsoundio*:enable_jack": False,
         "libsoundio*:enable_pulseaudio": True,
@@ -34,11 +34,10 @@ class AfvNativeConan(ConanFile):
     requires = [
         "msgpack/[~3.2.0]@bincrafters/stable",
         "jsonformoderncpp/[~3.7.0]@vthiery/stable",
-        "openssl/1.1.1e",
-        "libcurl/[~7.68.0]",
-        "libevent/[~2.1.11]",
+        "openssl/1.1.1i",
+        "libcurl/[~7.74.0]",
+        "libevent/[~2.1.12]",
         "libopus/1.3.1@xsquawkbox/devel",
-        "speexdsp/0.1@xpilot-project/stable",
     ]
     build_requires = [
     ]
@@ -67,10 +66,7 @@ class AfvNativeConan(ConanFile):
             self.copy("*.pdb", "lib", "bin")
 
     def configure(self):
-        if self.settings.os == 'Windows':
-            self.options['libcurl'].with_winssl = False
-        elif self.settings.os == 'Macos':
-            self.options['libcurl'].darwin_ssl = False
+        pass
 
     def requirements(self):
         if self.options.audio_library == "soundio":
@@ -104,6 +100,6 @@ class AfvNativeConan(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["afv_native"]
+        self.cpp_info.libs = ["afv_native", "speexdsp"]
         if self.settings.compiler == 'Visual Studio':
             self.cpp_info.defines += ["_USE_MATH_DEFINES"]

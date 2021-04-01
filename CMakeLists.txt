@@ -4,7 +4,7 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" ON)
+option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" OFF)
 option(BUILD_TESTS "Build Test Suite (requires Google Test)" OFF)
 
 
@@ -21,6 +21,8 @@ set(CMAKE_CXX_STANDARD 14)
 if(BUILD_TESTS)
   enable_testing()
 endif()
+
+add_subdirectory(extern/speexdsp)
 
 set(AFV_NATIVE_AUDIO_LIBRARY "portaudio" CACHE STRING "Audio Library to use - either portaudio or soundio")
 if(AFV_NATIVE_AUDIO_LIBRARY MATCHES "portaudio")
@@ -150,6 +152,7 @@ set(AFV_NATIVE_SOURCES
 		src/http/RESTRequest.cpp
 		src/util/base64.cpp
 		src/util/monotime.cpp
+		src/NativeWrapper.cpp
 		${AFV_NATIVE_AUDIO_SOURCES})
 set(AFV_NATIVE_THIRDPARTY_SOURCES
 		extern/simpleSource/SimpleComp.cpp
@@ -161,37 +164,11 @@ set(AFV_NATIVE_THIRDPARTY_SOURCES
 		extern/simpleSource/SimpleGate.h
 		extern/simpleSource/SimpleHeader.h
 		extern/simpleSource/SimpleLimit.cpp
-		extern/simpleSource/SimpleLimit.h
-		src/NativeWrapper.cpp)
-
-if(APPLE)
-find_library(CORE_AUDIO CoreAudio)
-find_library(AUDIO_TOOLBOX AudioToolbox)
-find_library(AUDIO_UNIT AudioUnit)
-find_library(CORE_FOUNDATION CoreFoundation)
-find_library(CORE_SERVICES CoreServices)
-
-target_link_libraries(afv_native
-	PUBLIC
-	CONAN_PKG::openssl
-	CONAN_PKG::msgpack
-	CONAN_PKG::jsonformoderncpp
-	CONAN_PKG::libcurl
-	CONAN_PKG::libevent
-	CONAN_PKG::libopus
-	CONAN_PKG::speexdsp
-	${AFV_NATIVE_AUDIO_LIBRARIES}
-	${CORE_AUDIO}
-	${AUDIO_TOOLBOX}
-	${AUDIO_UNIT}
-	${CORE_FOUNDATION}
-	${CORE_SERVICES})
-else()
+		extern/simpleSource/SimpleLimit.h)
 add_library(afv_native
 		${AFV_NATIVE_HEADERS}
 		${AFV_NATIVE_SOURCES}
 		${AFV_NATIVE_THIRDPARTY_SOURCES})
-endif()
 
 # organise sources in generated projects.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${AFV_NATIVE_SOURCES})
@@ -199,17 +176,16 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
 
 target_link_libraries(afv_native
-	PUBLIC
-	CONAN_PKG::openssl
-	CONAN_PKG::msgpack
-	CONAN_PKG::jsonformoderncpp
-	CONAN_PKG::libcurl
-	CONAN_PKG::libevent
-	CONAN_PKG::libopus
-	CONAN_PKG::speexdsp
-	${AFV_NATIVE_AUDIO_LIBRARIES})
-endif()
-
+		PRIVATE
+		speexdsp
+        PUBLIC
+        CONAN_PKG::openssl
+        CONAN_PKG::msgpack
+        CONAN_PKG::jsonformoderncpp
+        CONAN_PKG::libcurl
+        CONAN_PKG::libevent
+        CONAN_PKG::libopus
+		${AFV_NATIVE_AUDIO_LIBRARIES})
 target_include_directories(afv_native
 		PRIVATE
 		${CMAKE_SOURCE_DIR}/extern/cpp-jwt/include
@@ -296,8 +272,8 @@ install(TARGETS afv_native
 		ARCHIVE DESTINATION lib
 		)
 
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/include" # source directory
-		DESTINATION "." # target directory
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" # source directory
+		DESTINATION "speex" # target directory
 		FILES_MATCHING # install only matched files
 		PATTERN "*.h" # select header files
 		)
