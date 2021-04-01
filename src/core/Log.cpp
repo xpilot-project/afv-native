@@ -60,7 +60,7 @@ defaultLogger(const char *subsystem, const char *file, int line, const char *out
     time_t t = time(nullptr);
     strftime(dateTimeBuf, 100, "%c", localtime(&t));
     if (nullptr == gLoggerFh) {
-        gLoggerFh = fopen("afv.log", "at");
+        gLoggerFh = fopen("/Users/mike/afv.log", "at");
         atexit(cleanUpDefaultLogger);
     }
     if (nullptr != gLoggerFh) {

@@ -3,8 +3,10 @@ project(afv_native LANGUAGES CXX)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
-option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" OFF)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" ON)
 option(BUILD_TESTS "Build Test Suite (requires Google Test)" OFF)
+
 
 if(MSVC)
 	if(NOT DEFINED CONAN_LINK_RUNTIME AND DEFINED CONAN_SETTINGS_COMPILER_RUNTIME)
@@ -34,10 +36,13 @@ elseif(AFV_NATIVE_AUDIO_LIBRARY MATCHES "soundio")
 endif()
 
 set(AFV_NATIVE_HEADERS
+        include/afv-native/atcClient.h
+        include/afv-native/atisClient.h
 		include/afv-native/Client.h
 		include/afv-native/event.h
 		include/afv-native/Log.h
 		include/afv-native/afv/APISession.h
+        include/afv-native/afv/ATCRadioStack.h
 		include/afv-native/afv/EffectResources.h
 		include/afv-native/afv/params.h
 		include/afv-native/afv/RadioSimulation.h
@@ -46,8 +51,10 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/afv/VoiceCompressionSink.h
 		include/afv-native/afv/VoiceSession.h
 		include/afv-native/afv/dto/AuthRequest.h
+        include/afv-native/afv/dto/CrossCoupleGroup.h
 		include/afv-native/afv/dto/PostCallsignResponse.h
 		include/afv-native/afv/dto/Station.h
+        include/afv-native/afv/dto/StationTransceiver.h
 		include/afv-native/afv/dto/Transceiver.h
 		include/afv-native/afv/dto/VoiceServerConnectionData.h
 		include/afv-native/afv/dto/interfaces/IAudio.h
@@ -67,12 +74,14 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/audio/ISampleSink.h
 		include/afv-native/audio/ISampleSource.h
 		include/afv-native/audio/ISampleStorage.h
+        include/afv-native/audio/ITick.h
 		include/afv-native/audio/OutputMixer.h
 		include/afv-native/audio/PinkNoiseGenerator.h
 		include/afv-native/audio/RecordedSampleSource.h
 		include/afv-native/audio/SineToneSource.h
 		include/afv-native/audio/SinkFrameSizeAdjuster.h
 		include/afv-native/audio/SourceFrameSizeAdjuster.h
+        include/afv-native/audio/SourceToSinkAdapter.h
 		include/afv-native/audio/SpeexPreprocessor.h
 		include/afv-native/audio/VHFFilterSource.h
 		include/afv-native/audio/WavFile.h
@@ -95,19 +104,20 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/util/base64.h
 		include/afv-native/util/ChainedCallback.h
 		include/afv-native/util/monotime.h
-		include/afv-native/utility.h
-		)
-add_library(afv_native SHARED
-		${AFV_NATIVE_HEADERS}
+		include/afv-native/utility.h)
+set(AFV_NATIVE_SOURCES
 		src/afv/APISession.cpp
+        src/afv/ATCRadioStack.cpp
 		src/afv/EffectResources.cpp
 		src/afv/RadioSimulation.cpp
 		src/afv/RemoteVoiceSource.cpp
 		src/afv/VoiceCompressionSink.cpp
 		src/afv/VoiceSession.cpp
 		src/afv/dto/AuthRequest.cpp
+        src/afv/dto/CrossCoupleGroup.cpp
 		src/afv/dto/PostCallsignResponse.cpp
 		src/afv/dto/Station.cpp
+        src/afv/dto/StationTransceiver.cpp
 		src/afv/dto/Transceiver.cpp
 		src/afv/dto/VoiceServerConnectionData.cpp
 		src/audio/AudioDevice.cpp
@@ -118,9 +128,13 @@ add_library(afv_native SHARED
 		src/audio/SineToneSource.cpp
 		src/audio/SinkFrameSizeAdjuster.cpp
 		src/audio/SourceFrameSizeAdjuster.cpp
+        src/audio/SourceToSinkAdapter.cpp
 		src/audio/SpeexPreprocessor.cpp
+		src/audio/VHFFilterSource.cpp
 		src/audio/WavFile.cpp
 		src/audio/WavSampleStorage.cpp
+        src/core/atcClient.cpp
+        src/core/atisClient.cpp
 		src/core/Client.cpp
 		src/core/Log.cpp
 		src/cryptodto/Channel.cpp
@@ -136,7 +150,8 @@ add_library(afv_native SHARED
 		src/http/RESTRequest.cpp
 		src/util/base64.cpp
 		src/util/monotime.cpp
-		${AFV_NATIVE_AUDIO_SOURCES}
+		${AFV_NATIVE_AUDIO_SOURCES})
+set(AFV_NATIVE_THIRDPARTY_SOURCES
 		extern/simpleSource/SimpleComp.cpp
 		extern/simpleSource/SimpleComp.h
 		extern/simpleSource/SimpleEnvelope.cpp
@@ -147,7 +162,6 @@ add_library(afv_native SHARED
 		extern/simpleSource/SimpleHeader.h
 		extern/simpleSource/SimpleLimit.cpp
 		extern/simpleSource/SimpleLimit.h
-		src/audio/VHFFilterSource.cpp
 		src/NativeWrapper.cpp)
 
 if(APPLE)
@@ -173,6 +187,17 @@ target_link_libraries(afv_native
 	${CORE_FOUNDATION}
 	${CORE_SERVICES})
 else()
+add_library(afv_native
+		${AFV_NATIVE_HEADERS}
+		${AFV_NATIVE_SOURCES}
+		${AFV_NATIVE_THIRDPARTY_SOURCES})
+endif()
+
+# organise sources in generated projects.
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${AFV_NATIVE_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers" FILES ${AFV_NATIVE_HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
+
 target_link_libraries(afv_native
 	PUBLIC
 	CONAN_PKG::openssl

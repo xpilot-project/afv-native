@@ -2,7 +2,7 @@ from conans import ConanFile, CMake, tools
 
 class AfvNativeConan(ConanFile):
     name = "AFV-Native"
-    version = "1.1.0"
+    version = "1.1.1"
     license = "3-Clause BSD"
     author = "Chris Collins <kuroneko@sysadninjas.net>"
     url = "https://github.com/xsquawkbox/AFV-Native"
@@ -20,7 +20,7 @@ class AfvNativeConan(ConanFile):
         "shared": False,
         "fPIC": True,
         "audio_library": "portaudio",
-        "build_examples": False,
+        "build_examples": True,
         "build_tests": False,
         "*:shared": False,
         "*:fPIC": True,
