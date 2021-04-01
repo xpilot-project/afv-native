@@ -152,7 +152,8 @@ set(AFV_NATIVE_SOURCES
 		src/http/RESTRequest.cpp
 		src/util/base64.cpp
 		src/util/monotime.cpp
-		src/NativeWrapper.cpp
+		src/AtisClientWrapper.cpp
+		src/ClientWrapper.cpp
 		${AFV_NATIVE_AUDIO_SOURCES})
 set(AFV_NATIVE_THIRDPARTY_SOURCES
 		extern/simpleSource/SimpleComp.cpp
@@ -165,7 +166,7 @@ set(AFV_NATIVE_THIRDPARTY_SOURCES
 		extern/simpleSource/SimpleHeader.h
 		extern/simpleSource/SimpleLimit.cpp
 		extern/simpleSource/SimpleLimit.h)
-add_library(afv_native
+add_library(afv_native SHARED
 		${AFV_NATIVE_HEADERS}
 		${AFV_NATIVE_SOURCES}
 		${AFV_NATIVE_THIRDPARTY_SOURCES})

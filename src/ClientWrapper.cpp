@@ -7,34 +7,39 @@
 #include "afv-native/Client.h"
 #include <event2/event.h>
 
-#ifdef WIN32
-#define AFV_API __declspec(dllexport)
-#else
-#define AFV_API
-#endif
+namespace clientapi
+{
+    #ifdef WIN32
+    #define AFV_API __declspec(dllexport)
+    #else
+    #define AFV_API
+    #endif
 
-struct event_base* ev_base;
+    struct event_base* ev_base;
 
-std::mutex afvMutex;
-std::unique_ptr<afv_native::Client> client;
-std::unique_ptr<std::thread> eventThread;
-std::atomic<bool>keepAlive{ false };
-std::atomic<bool> isInitialized{ false };
-afv_native::audio::AudioDevice::Api mAudioApi;
-int mInputDevice;
-int mOutputDevice;
+    std::mutex afvMutex;
+    std::unique_ptr<afv_native::Client> client;
+    std::unique_ptr<std::thread> eventThread;
+    std::atomic<bool>keepAlive{ false };
+    std::atomic<bool> isInitialized{ false };
+    afv_native::audio::AudioDevice::Api mAudioApi;
+    int mInputDevice;
+    int mOutputDevice;
 
-typedef std::map<afv_native::audio::AudioDevice::Api, std::string> ApiProviderMap;
-typedef std::map<int, afv_native::audio::AudioDevice::DeviceInfo> AudioDeviceMap;
+    typedef std::map<afv_native::audio::AudioDevice::Api, std::string> ApiProviderMap;
+    typedef std::map<int, afv_native::audio::AudioDevice::DeviceInfo> AudioDeviceMap;
 
-std::map<afv_native::audio::AudioDevice::Api, std::string> mAudioProviders;
-std::map<int, afv_native::audio::AudioDevice::DeviceInfo> mInputDevices;
-std::map<int, afv_native::audio::AudioDevice::DeviceInfo> mOutputDevices;
+    std::map<afv_native::audio::AudioDevice::Api, std::string> mAudioProviders;
+    std::map<int, afv_native::audio::AudioDevice::DeviceInfo> mInputDevices;
+    std::map<int, afv_native::audio::AudioDevice::DeviceInfo> mOutputDevices;
+}
+
+using namespace clientapi;
 
 #ifdef __cplusplus
 extern "C" {
 
-    AFV_API void Initialize(char* resourcePath, int numRadios, char* clientName)
+    AFV_API void Client_Init(char* resourcePath, int numRadios, char* clientName)
     {
         #ifdef WIN32
         WORD wVersionRequested;
@@ -60,7 +65,7 @@ extern "C" {
         isInitialized = true;
     }
 
-    AFV_API void Destroy()
+    AFV_API void Client_Destroy()
     {
         keepAlive = false;
         if (eventThread->joinable())
@@ -74,125 +79,125 @@ extern "C" {
         #endif
     }
 
-    AFV_API bool IsClientInitialized()
+    AFV_API bool Client_IsInitialized()
     {
         return isInitialized;
     }
 
-    AFV_API void SetBaseUrl(const char* newUrl)
+    AFV_API void Client_SetBaseUrl(const char* newUrl)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setBaseUrl(std::string(newUrl));
     }
 
-    AFV_API void SetClientPosition(double lat, double lon, double amslm, double aglm)
+    AFV_API void Client_SetClientPosition(double lat, double lon, double amslm, double aglm)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setClientPosition(lat, lon, amslm, aglm);
     }
 
-    AFV_API void SetRadioState(unsigned int radioNum, int freq)
+    AFV_API void Client_SetRadioState(unsigned int radioNum, int freq)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setRadioState(radioNum, freq);
     }
 
-    AFV_API void SetTxRadio(unsigned int radioNum)
+    AFV_API void Client_SetTxRadio(unsigned int radioNum)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setTxRadio(radioNum);
     }
 
-    AFV_API void SetRadioGain(unsigned int radioNum, float gain)
+    AFV_API void Client_SetRadioGain(unsigned int radioNum, float gain)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setRadioGain(radioNum, gain);
     }
 
-    AFV_API void SetPtt(bool pttState)
+    AFV_API void Client_SetPtt(bool pttState)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setPtt(pttState);
     }
 
-    AFV_API void SetCredentials(const char* username, const char* password)
+    AFV_API void Client_SetCredentials(const char* username, const char* password)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setCredentials(std::string(username), std::string(password));
     }
 
-    AFV_API void SetCallsign(const char* callsign)
+    AFV_API void Client_SetCallsign(const char* callsign)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setCallsign(std::string(callsign));
     }
 
-    AFV_API bool IsVoiceConnected()
+    AFV_API bool Client_IsVoiceConnected()
     {
         return client->isVoiceConnected();
     }
 
-    AFV_API bool IsAPIConnected()
+    AFV_API bool Client_IsApiConnected()
     {
         return client->isAPIConnected();
     }
 
-    AFV_API bool AfvConnect()
+    AFV_API bool Client_Connect()
     {
         return client->connect();
     }
 
-    AFV_API void AfvDisconnect()
+    AFV_API void Client_Disconnect()
     {
         client->disconnect();
     }
 
-    AFV_API double GetInputPeak()
+    AFV_API double Client_GetInputPeak()
     {
         return client->getInputPeak();
     }
 
-    AFV_API double GetInputVu()
+    AFV_API double Client_GetInputVu()
     {
         return client->getInputVu();
     }
 
-    AFV_API bool GetEnableInputFilters()
+    AFV_API bool Client_GetInputFiltersEnabled()
     {
         return client->getEnableInputFilters();
     }
 
-    AFV_API void SetEnableInputFilters(bool enableInputFilters)
+    AFV_API void Client_SetEnableInputFilters(bool enableInputFilters)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setEnableInputFilters(enableInputFilters);
     }
 
-    AFV_API void SetEnableOutputEffects(bool enableEffects)
+    AFV_API void Client_SetEnableOutputEffects(bool enableEffects)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setEnableOutputEffects(enableEffects);
     }
 
-    AFV_API void SetEnableHfSquelch(bool enableSquelch)
+    AFV_API void Client_EnableHfSquelch(bool enableSquelch)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setEnableHfSquelch(enableSquelch);
     }
 
-    AFV_API void StartAudio()
+    AFV_API void Client_StartAudio()
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->startAudio();
     }
 
-    AFV_API void StopAudio()
+    AFV_API void Client_StopAudio()
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->stopAudio();
     }
 
-    AFV_API void GetAudioApis(void(*callback)(unsigned int api, const char* name))
+    AFV_API void Client_GetAudioApis(void(*callback)(unsigned int api, const char* name))
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         for (const auto& item : mAudioProviders)
@@ -201,7 +206,7 @@ extern "C" {
         }
     }
 
-    AFV_API void SetAudioApi(const char* api)
+    AFV_API void Client_SetAudioApi(const char* api)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         for (ApiProviderMap::const_iterator it = mAudioProviders.begin(); it != mAudioProviders.end(); ++it)
@@ -215,7 +220,7 @@ extern "C" {
         }
     }
 
-    AFV_API void SetAudioDevice()
+    AFV_API void Client_SetAudioDevice()
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         {
@@ -237,7 +242,7 @@ extern "C" {
         }
     }
 
-    AFV_API void GetInputDevices(void(*callback)(unsigned int id, const char* name))
+    AFV_API void Client_GetInputDevice(void(*callback)(unsigned int id, const char* name))
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         for (const auto& item : mInputDevices)
@@ -246,7 +251,7 @@ extern "C" {
         }
     }
 
-    AFV_API void GetOutputDevices(void(*callback)(unsigned int id, const char* name))
+    AFV_API void Client_GetOutputDevice(void(*callback)(unsigned int id, const char* name))
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         for (const auto& item : mOutputDevices)
@@ -255,7 +260,7 @@ extern "C" {
         }
     }
 
-    AFV_API void SetAudioInputDevice(const char* inputDevice)
+    AFV_API void Client_SetAudioInputDevice(const char* inputDevice)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         for (AudioDeviceMap::const_iterator it = mInputDevices.begin(); it != mInputDevices.end(); ++it)
@@ -268,7 +273,7 @@ extern "C" {
         }
     }
 
-    AFV_API void SetAudioOutputDevice(const char* outputDevice)
+    AFV_API void Client_SetAudioOutputDevice(const char* outputDevice)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         for (AudioDeviceMap::const_iterator it = mOutputDevices.begin(); it != mOutputDevices.end(); ++it)
@@ -281,7 +286,7 @@ extern "C" {
         }
     }
 
-    AFV_API void GetStationAliases(void(*callback)(const char* id, const char* callsign,
+    AFV_API void Client_GetStationAliases(void(*callback)(const char* id, const char* callsign,
         unsigned int frequency, unsigned int frequencyAlias))
     {
         std::lock_guard<std::mutex> lock(afvMutex);
@@ -291,7 +296,7 @@ extern "C" {
         }
     }
 
-    AFV_API void RaiseClientEvent(void(*callback)(afv_native::ClientEventType evt, int data))
+    AFV_API void Client_RaiseClientEvent(void(*callback)(afv_native::ClientEventType evt, int data))
     {
         client->ClientEventCallback.addCallback(nullptr, [callback](afv_native::ClientEventType evt, void* data)
         {
@@ -304,12 +309,12 @@ extern "C" {
         });
     }
 
-    AFV_API bool IsCom1Rx()
+    AFV_API bool Client_IsCom1Rx()
     {
         return client->getRadioSimulation()->AudiableAudioStreams[0].load() > 0;
     }
 
-    AFV_API bool IsCom2Rx()
+    AFV_API bool Client_IsCom2Rx()
     {
         return client->getRadioSimulation()->AudiableAudioStreams[1].load() > 0;
     }
