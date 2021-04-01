@@ -46,9 +46,9 @@ To build AFV-native, you will require an up-to-date copy of cmake and conan.
 * [Conan](https://conan.io)
 * [CMake](https://cmake.org)
 
-After installing conan, add the xpilot-project, XSquawkBox Open-Source and Bincrafters Repository to your search path.
+After installing conan, add the XSquawkBox Open-Source and Bincrafters 
+Repository to your search path.
 ```shell script
-conan remote add xpilot-project https://api.bintray.com/conan/jshannon/xpilot-project
 conan remote add xsquawkbox-public https://api.bintray.com/conan/akuneko/xsquawkbox
 conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
 ```
