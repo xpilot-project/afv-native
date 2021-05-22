@@ -36,13 +36,25 @@
 
 using namespace afv_native::audio;
 
-SpeexPreprocessor::SpeexPreprocessor(std::shared_ptr<ISampleSink> upstream):
+SpeexPreprocessor::SpeexPreprocessor(std::shared_ptr<ISampleSink> upstream) :
     mUpstreamSink(std::move(upstream)),
     mPreprocessorState(nullptr),
     mSpeexFrame(),
     mOutputFrame()
 {
     mPreprocessorState = speex_preprocess_state_init(frameSizeSamples, sampleRateHz);
+
+    int arg = 1;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC, &arg);
+
+    arg = 30000;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_TARGET, &arg);
+
+    arg = roundf(floorf(20.0f * log10f(30000.0f / 1000.0f)));
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_MAX_GAIN, &arg);
+
+    arg = -60;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_DECREMENT, &arg);
 }
 
 SpeexPreprocessor::~SpeexPreprocessor()
@@ -52,7 +64,6 @@ SpeexPreprocessor::~SpeexPreprocessor()
 
 void SpeexPreprocessor::putAudioFrame(const SampleType *bufferIn)
 {
-   
     for (size_t i = 0; i < frameSizeSamples; i++) {
         mSpeexFrame[i] = static_cast<spx_int16_t>(bufferIn[i] * 32767.0f);
     }

@@ -37,7 +37,7 @@ using namespace atisapi;
 #ifdef __cplusplus
 extern "C" {
 
-    AFV_API void Atis_Initilize(char* resourcePath, char* atisFile, char* clientName)
+    AFV_API void Atis_Initialize(char* resourcePath, char* atisFile, char* clientName)
     {
         #ifdef WIN32
         WORD wVersionRequested;
@@ -99,7 +99,7 @@ extern "C" {
         return client->isVoiceConnected();
     }
 
-    AFV_API bool Atis_IsApiConnected()
+    AFV_API bool Atis_IsAPIConnected()
     {
         return client->isAPIConnected();
     }
@@ -139,6 +139,19 @@ extern "C" {
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setFrequency(frequency);
+    }
+
+    AFV_API void Atis_RaiseClientEvent(void(*callback)(afv_native::ClientEventType evt, int data))
+    {
+        client->ClientEventCallback.addCallback(nullptr, [callback](afv_native::ClientEventType evt, void* data)
+        {
+            int v = -1;
+            if (data != nullptr)
+            {
+                v = *reinterpret_cast<int*>(data);
+            }
+            callback(evt, v);
+        });
     }
 }
 #endif
