@@ -2,10 +2,10 @@ from conans import ConanFile, CMake, tools
 
 class AfvNativeConan(ConanFile):
     name = "AFV-Native"
-    version = "1.1.0"
+    version = "1.2.0"
     license = "3-Clause BSD"
     author = "Chris Collins <kuroneko@sysadninjas.net>"
-    url = "https://github.com/xsquawkbox/AFV-Native"
+    url = "https://github.com/xpilot-project/AFV-Native"
     description = "Portable, Native Implementation of the AFV Interface"
     topics = ("vatsim", "afv", "voice", "portable")
     settings = "os", "compiler", "build_type", "arch"
@@ -24,7 +24,7 @@ class AfvNativeConan(ConanFile):
         "build_tests": False,
         "*:shared": False,
         "*:fPIC": True,
-        "libcurl:with_openssl": True,
+        "libcurl:with_ssl": "openssl",
         "libevent:with_openssl": False,
         "libsoundio*:enable_jack": False,
         "libsoundio*:enable_pulseaudio": True,
@@ -32,13 +32,13 @@ class AfvNativeConan(ConanFile):
     }
     generators = "cmake"
     requires = [
-        "msgpack/[~3.2.0]@bincrafters/stable",
-        "jsonformoderncpp/[~3.7.0]@vthiery/stable",
-        "openssl/1.1.1e",
-        "libcurl/[~7.68.0]",
-        "libevent/[~2.1.11]",
-        "libopus/1.3.1@xsquawkbox/devel",
-        "speexdsp/0.1@xpilot-project/stable",
+        "msgpack/3.3.0",
+        "nlohmann_json/3.9.1",
+        "openssl/1.1.1k",
+        "libcurl/7.75.0",
+        "libevent/2.1.12",
+        "libopus/2.0.0@xpilot-project/stable",
+        "speexdsp/2.0.0@xpilot-project/stable"
     ]
     build_requires = [
     ]
@@ -67,16 +67,14 @@ class AfvNativeConan(ConanFile):
             self.copy("*.pdb", "lib", "bin")
 
     def configure(self):
-        if self.settings.os == 'Windows':
-            self.options['libcurl'].with_winssl = False
-        elif self.settings.os == 'Macos':
-            self.options['libcurl'].darwin_ssl = False
+        pass
 
     def requirements(self):
-        if self.options.audio_library == "soundio":
-            self.requires("libsoundio/2.0.0@xsquawkbox/devel")
-        elif self.options.audio_library == "portaudio":
-            self.requires("portaudio/v190600.20161030@bincrafters/stable")
+        self.requires("portaudio/2.0.0@xpilot-project/stable")
+        #if self.options.audio_library == "soundio":
+        #    self.requires("libsoundio/2.0.0@xsquawkbox/devel")
+        #elif self.options.audio_library == "portaudio":
+        #    self.requires("portaudio/v190600.20161030@bincrafters/stable")
 
     def build_requirements(self):
         if self.options.build_examples:

@@ -33,6 +33,7 @@
 
 #include "afv-native/audio/SpeexPreprocessor.h"
 #include "afv-native/audio/audio_params.h"
+#include "afv-native/Log.h"
 
 using namespace afv_native::audio;
 

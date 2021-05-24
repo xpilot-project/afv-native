@@ -5,3 +5,12 @@
 	path = extern/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = master
+[submodule "extern/speexdsp"]
+	path = extern/speexdsp
+	url = git@github.com:xpilot-project/speexdsp.git
+[submodule "extern/opus"]
+	path = extern/opus
+	url = git@github.com:xpilot-project/opus.git
+[submodule "extern/portaudio"]
+	path = extern/portaudio
+	url = git@github.com:xpilot-project/portaudio.git

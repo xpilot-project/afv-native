@@ -35,7 +35,7 @@
 
 #include <memory>
 #include <cstring>
-#include <portaudio.h>
+#include <portaudio/include/portaudio.h>
 
 #include "afv-native/Log.h"
 

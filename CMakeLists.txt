@@ -3,6 +3,7 @@ project(afv_native LANGUAGES CXX)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" OFF)
 option(BUILD_TESTS "Build Test Suite (requires Google Test)" OFF)
 
@@ -149,6 +150,11 @@ add_library(afv_native SHARED
 		extern/simpleSource/SimpleLimit.h
 		src/audio/VHFFilterSource.cpp
 		src/NativeWrapper.cpp)
+		
+# organise sources in generated projects.
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${AFV_NATIVE_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers" FILES ${AFV_NATIVE_HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
 
 if(APPLE)
 find_library(CORE_AUDIO CoreAudio)
@@ -161,7 +167,7 @@ target_link_libraries(afv_native
 	PUBLIC
 	CONAN_PKG::openssl
 	CONAN_PKG::msgpack
-	CONAN_PKG::jsonformoderncpp
+	CONAN_PKG::nlohmann_json
 	CONAN_PKG::libcurl
 	CONAN_PKG::libevent
 	CONAN_PKG::libopus
@@ -177,7 +183,7 @@ target_link_libraries(afv_native
 	PUBLIC
 	CONAN_PKG::openssl
 	CONAN_PKG::msgpack
-	CONAN_PKG::jsonformoderncpp
+	CONAN_PKG::nlohmann_json
 	CONAN_PKG::libcurl
 	CONAN_PKG::libevent
 	CONAN_PKG::libopus
@@ -190,7 +196,8 @@ target_include_directories(afv_native
 		${CMAKE_SOURCE_DIR}/extern/cpp-jwt/include
 		${CMAKE_SOURCE_DIR}/extern/simpleSource
 		PUBLIC
-		${CMAKE_SOURCE_DIR}/include)
+		${CMAKE_SOURCE_DIR}/include
+		${CMAKE_SOURCE_DIR}/extern)
 
 if(MSVC)
 	# I hate to do this this way, but we must force MSVC to define the standard math macros whereever the afv headers
