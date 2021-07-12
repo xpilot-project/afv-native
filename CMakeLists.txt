@@ -4,8 +4,6 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-option(BUILD_EXAMPLES "Build Example Programs (requires SDL)" OFF)
-option(BUILD_TESTS "Build Test Suite (requires Google Test)" OFF)
 
 if(MSVC)
 	if(NOT DEFINED CONAN_LINK_RUNTIME AND DEFINED CONAN_SETTINGS_COMPILER_RUNTIME)
@@ -17,22 +15,6 @@ if(MSVC)
 endif(MSVC)
 
 set(CMAKE_CXX_STANDARD 14)
-if(BUILD_TESTS)
-  enable_testing()
-endif()
-
-set(AFV_NATIVE_AUDIO_LIBRARY "portaudio" CACHE STRING "Audio Library to use - either portaudio or soundio")
-if(AFV_NATIVE_AUDIO_LIBRARY MATCHES "portaudio")
-	set(AFV_NATIVE_AUDIO_SOURCES
-			src/audio/PortAudioAudioDevice.cpp
-			src/audio/PortAudioAudioDevice.h)
-	set(AFV_NATIVE_AUDIO_LIBRARIES CONAN_PKG::portaudio)
-elseif(AFV_NATIVE_AUDIO_LIBRARY MATCHES "soundio")
-	set(AFV_NATIVE_AUDIO_SOURCES
-			src/audio/SoundIOAudioDevice.cpp
-			src/audio/SoundIOAudioDevice.h)
-	set(AFV_NATIVE_AUDIO_LIBRARIES CONAN_PKG::libsoundio)
-endif()
 
 set(AFV_NATIVE_HEADERS
 		include/afv-native/Client.h
@@ -137,7 +119,8 @@ add_library(afv_native SHARED
 		src/http/RESTRequest.cpp
 		src/util/base64.cpp
 		src/util/monotime.cpp
-		${AFV_NATIVE_AUDIO_SOURCES}
+		src/audio/PortAudioAudioDevice.cpp
+		src/audio/PortAudioAudioDevice.h
 		extern/simpleSource/SimpleComp.cpp
 		extern/simpleSource/SimpleComp.h
 		extern/simpleSource/SimpleEnvelope.cpp
@@ -156,6 +139,23 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${AFV_NA
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers" FILES ${AFV_NATIVE_HEADERS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
 
+if(WIN32)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/2.0.0/windows-opus.lib)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/windows-opus.lib)
+	
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/2.0.0/windows-portaudio_static_x64.lib)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-portaudio_static_x64.lib)
+		
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/2.0.0/windows-speexdsp.lib)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-speexdsp.lib)
+elseif(UNIX)
+elseif(APPLE)
+endif()
+
+file(DOWNLOAD ${OPUS_URL} ${OPUS_LIBARY_PATH})
+file(DOWNLOAD ${PORTAUDIO_URL} ${PORTAUDIO_LIBRARY_PATH})
+file(DOWNLOAD ${SPEEXDSP_URL} ${SPEEXDSP_LIBRARY_PATH})
+
 if(APPLE)
 find_library(CORE_AUDIO CoreAudio)
 find_library(AUDIO_TOOLBOX AudioToolbox)
@@ -170,9 +170,9 @@ target_link_libraries(afv_native
 	CONAN_PKG::nlohmann_json
 	CONAN_PKG::libcurl
 	CONAN_PKG::libevent
-	CONAN_PKG::libopus
-	CONAN_PKG::speexdsp
-	${AFV_NATIVE_AUDIO_LIBRARIES}
+	${OPUS_LIBARY_PATH}
+	${PORTAUDIO_LIBRARY_PATH}
+	${SPEEXDSP_LIBRARY_PATH}
 	${CORE_AUDIO}
 	${AUDIO_TOOLBOX}
 	${AUDIO_UNIT}
@@ -186,9 +186,9 @@ target_link_libraries(afv_native
 	CONAN_PKG::nlohmann_json
 	CONAN_PKG::libcurl
 	CONAN_PKG::libevent
-	CONAN_PKG::libopus
-	CONAN_PKG::speexdsp
-	${AFV_NATIVE_AUDIO_LIBRARIES})
+	${OPUS_LIBARY_PATH}
+	${PORTAUDIO_LIBRARY_PATH}
+	${SPEEXDSP_LIBRARY_PATH})
 endif()
 
 target_include_directories(afv_native
@@ -204,73 +204,6 @@ if(MSVC)
 	# are used
 	target_compile_definitions(afv_native PUBLIC _USE_MATH_DEFINES)
 endif()
-
-if(BUILD_TESTS)
-	include(GoogleTest)
-	add_executable(
-			afv_native_test
-			test/main.cpp
-			test/audio/test_SinkFrameSizeAdapter.cpp
-			test/audio/test_SourceFrameSizeAdapter.cpp
-			test/cryptodto/test_ChannelConfig.cpp
-			test/cryptodto/test_SequenceTest.cpp
-			test/http/test_http_async.cpp
-			test/http/test_http_sync.cpp
-			test/util/test_base64.cpp
-	)
-	target_link_libraries(afv_native_test
-			CONAN_PKG::gtest
-			afv_native)
-	gtest_discover_tests(afv_native_test
-			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif()
-
-if(BUILD_EXAMPLES)
-	add_executable(audiotest
-			examples/audiotest/main.cpp)
-	target_link_libraries(audiotest
-			afv_native)
-
-	add_executable(dsptest
-			examples/dsptest/main.cpp)
-	target_link_libraries(dsptest
-			afv_native)
-
-	add_executable(
-			testclient
-			examples/testclient/main.cpp
-			examples/testclient/TestClient.cpp
-			examples/testclient/TestClient.h
-			extern/imgui/imgui.cpp
-			extern/imgui/imgui_draw.cpp
-			extern/imgui/imgui_widgets.cpp
-			extern/imgui/imgui_internal.h
-			extern/imgui/imgui_demo.cpp
-			extern/imgui/imconfig.h
-			extern/imgui/imgui.h
-			extern/imgui/misc/cpp/imgui_stdlib.cpp
-			extern/imgui/misc/cpp/imgui_stdlib.h
-			extern/imgui/examples/imgui_impl_opengl3.cpp
-			extern/imgui/examples/imgui_impl_opengl3.h
-			extern/imgui/examples/imgui_impl_sdl.cpp
-			extern/imgui/examples/imgui_impl_sdl.h
-			)
-	target_include_directories(
-			testclient
-			PRIVATE
-			${CMAKE_SOURCE_DIR}/extern/imgui
-			${CMAKE_SOURCE_DIR}/extern/imgui/examples
-			${CMAKE_SOURCE_DIR}/extern/imgui/misc/cpp
-			)
-	target_compile_definitions(testclient
-			PRIVATE
-			IMGUI_IMPL_OPENGL_LOADER_GLEW=1)
-	target_link_libraries(testclient
-			afv_native
-			CONAN_PKG::libevent
-			CONAN_PKG::sdl2
-			CONAN_PKG::glew)
-endif() # BUILD_EXAMPLES
 
 install(TARGETS afv_native
 		RUNTIME DESTINATION bin
