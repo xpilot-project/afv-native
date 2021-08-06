@@ -82,4 +82,3 @@ namespace afv_native {
 
 
 #endif /* AFV_NATIVE_WAVFILE_H */
-

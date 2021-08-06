@@ -323,7 +323,7 @@ void Client::sendTransceiverUpdate()
                     this->unguardPtt();
                 }
             });
-    mTransceiverUpdateTimer.enable(afv::afvTransceiverUpdateIntervalMs);
+    mTransceiverUpdateTimer.enable(afv::afvTransciverUpdateIntervalMs);
 }
 
 void Client::queueTransceiverUpdate()
@@ -492,19 +492,5 @@ std::shared_ptr<const afv::RadioSimulation> Client::getRadioSimulation() const {
 
 std::shared_ptr<const audio::AudioDevice> Client::getAudioDevice() const {
     return mAudioDevice;
-}
-
-bool Client::getRxActive(unsigned int radioNumber) {
-    if (mRadioSim) {
-        return mRadioSim->getRxActive(radioNumber);
-    }
-    return false;
-}
-
-bool Client::getTxActive(unsigned int radioNumber) {
-    if (mRadioSim) {
-        return mRadioSim->getTxActive(radioNumber);
-    }
-    return false;
 }
 

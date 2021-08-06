@@ -53,12 +53,7 @@ try_load(const std::string &file)
     if (nullptr == audData) {
         return shared_ptr<audio::WavSampleStorage>(nullptr);
     }
-    auto result = make_shared<audio::WavSampleStorage>(*audData);
-    
-    //ME: Fix Leak
-    delete audData;
-    
-    return result;
+    return make_shared<audio::WavSampleStorage>(*audData);
 }
 
 EffectResources::EffectResources(const string &file_path)

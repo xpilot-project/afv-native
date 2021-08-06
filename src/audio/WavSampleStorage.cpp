@@ -35,7 +35,7 @@
 
 #include <vector>
 #include <cstring>
-#include <speex/speex_resampler.h>
+#include <speexdsp/include/speex/speex_resampler.h>
 
 using namespace afv_native::audio;
 using namespace std;

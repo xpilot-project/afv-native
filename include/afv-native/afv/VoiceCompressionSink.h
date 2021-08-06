@@ -34,7 +34,7 @@
 #ifndef AFV_NATIVE_VOICECOMPRESSIONSINK_H
 #define AFV_NATIVE_VOICECOMPRESSIONSINK_H
 
-#include <opus/opus.h>
+#include <opus/include/opus.h>
 #include <vector>
 
 #include "afv-native/audio/ISampleSink.h"

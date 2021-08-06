@@ -46,10 +46,8 @@ SourceStatus RecordedSampleSource::getAudioFrame(SampleType *bufferOut)
     }
     const size_t sourceLength = mSampleSource->lengthInSamples();
     do {
-        mFirstFrame=false;
         if (mLoop && mCurPosition >= sourceLength) {
             mCurPosition = 0;
-            mFirstFrame=true;
         }
         auto maxCopy = min<size_t>(frameSizeSamples - bufOffset, sourceLength - mCurPosition);
         ::memcpy(bufferOut + bufOffset, mSampleSource->data() + mCurPosition, maxCopy * sizeof(SampleType));
@@ -70,8 +68,7 @@ RecordedSampleSource::RecordedSampleSource(const std::shared_ptr<ISampleStorage>
     mSampleSource(src),
     mLoop(loop),
     mPlay(true),
-    mCurPosition(0),
-    mFirstFrame(false)
+    mCurPosition(0)
 {
 }
 
@@ -82,15 +79,4 @@ RecordedSampleSource::~RecordedSampleSource()
 bool RecordedSampleSource::isPlaying() const
 {
     return mPlay;
-}
-
-void RecordedSampleSource::reset() {
-    
-    mCurPosition=0;
-    
-}
-
-bool RecordedSampleSource::firstFrame() {
-    
-    return mFirstFrame;
 }
