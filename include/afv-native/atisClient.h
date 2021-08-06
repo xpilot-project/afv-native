@@ -36,10 +36,11 @@ namespace afv_native {
      * an application.
      */
     class ATISClient :
-                public audio::ISampleSink,
-                public afv::ICompressedFrameSink,
-                public std::enable_shared_from_this<ATISClient>,
-                public audio::ITick {
+        public audio::ISampleSink,
+        public afv::ICompressedFrameSink,
+        public std::enable_shared_from_this<ATISClient>,
+        public audio::ITick
+    {
     public:
         /** Construct an AFV-native ATC Client.
          *
@@ -63,10 +64,10 @@ namespace afv_native {
          *      audio-subsystem.
          */
         ATISClient(
-                struct event_base *evBase,
-                std::string atisFile,
-                const std::string &clientName = "AFV-Native",
-                std::string baseUrl = "https://voice1.vatsim.uk");
+            struct event_base* evBase,
+            std::string atisFile,
+            const std::string& clientName = "AFV-Native",
+            std::string baseUrl = "https://voice1.vatsim.uk");
 
         virtual ~ATISClient();
 
@@ -89,12 +90,12 @@ namespace afv_native {
         void setClientPosition(double lat, double lon, double amslm, double aglm);
 
         void setFrequency(unsigned int freq);
-        
+
 
         /** sets the (linear) gain to be applied to radioNum */
         void setRadioGain(unsigned int radioNum, float gain);
 
-        
+
         /** setCredentials sets the user Credentials for this client.
          *
          * @note This only affects future attempts to connect.
@@ -102,7 +103,7 @@ namespace afv_native {
          * @param username The user's CID or username.
          * @param password The user's password
          */
-        void setCredentials(const std::string &username, const std::string &password);
+        void setCredentials(const std::string& username, const std::string& password);
 
         /** setCallsign sets the user's callsign for this client.
          *
@@ -112,7 +113,7 @@ namespace afv_native {
          */
         void setCallsign(std::string callsign);
 
-        
+
         /** isAPIConnected() indicates if the API Server connection is up.
          *
          * @return true if the API server connection is good or in the middle of
@@ -136,7 +137,7 @@ namespace afv_native {
          *
          */
         void disconnect();
-                    
+
         void tick();
 
         double getInputPeak() const;
@@ -155,28 +156,28 @@ namespace afv_native {
          * The second argument is a pointer to data relevant to the callback.  The memory it points to is only
          * guaranteed to be available for the duration of the callback.
          */
-        util::ChainedCallback<void(ClientEventType,void*)>  ClientEventCallback;
+        util::ChainedCallback<void(ClientEventType, void*)>  ClientEventCallback;
 
-  
+
         std::map<std::string, std::vector<afv::dto::StationTransceiver>> getStationTransceivers() const;
 
         void startAudio();
         void stopAudio();
-                    
+
         bool isPlaying();
 
-        void putAudioFrame(const audio::SampleType *bufferIn);
-       
-    
+        void putAudioFrame(const audio::SampleType* bufferIn);
+
+
     protected:
 
-        struct event_base *mEvBase;
-        
+        struct event_base* mEvBase;
+
 
         http::EventTransferManager mTransferManager;
         afv::APISession mAPISession;
         afv::VoiceSession mVoiceSession;
-        
+
         void processCompressedFrame(std::vector<unsigned char> compressedData);
 
         double mClientLatitude;
@@ -193,7 +194,7 @@ namespace afv_native {
 
         void sendCachedFrame();
 
-        
+
         std::vector<afv::dto::Transceiver> makeTransceiverDto();
         /* sendTransceiverUpdate sends the update now, in process.
          * queueTransceiverUpdate schedules it for the next eventloop.  This is a
@@ -204,28 +205,23 @@ namespace afv_native {
         void queueTransceiverUpdate();
         void stopTransceiverUpdate();
 
-  
+
 
     protected:
-                    event::EventCallbackTimer mTransceiverUpdateTimer;
-                    cryptodto::UDPChannel *mChannel;
-                    std::atomic<uint32_t> mTxSequence;
-                    std::shared_ptr<afv::VoiceCompressionSink> mVoiceSink;
-                    std::shared_ptr<audio::SpeexPreprocessor> mVoiceFilter;
-                    std::shared_ptr<audio::WavSampleStorage> mWavSampleStorage;
-                    std::shared_ptr<audio::RecordedSampleSource> mRecordedSampleSource;
-                    std::shared_ptr<audio::SourceToSinkAdapter> mAdapter;
-                    std::vector<std::vector<unsigned char>> mStoredData;
-                    bool looped;
-                    bool playCachedData;
-                    unsigned int cacheNum;
-
-                    
-
+        event::EventCallbackTimer mTransceiverUpdateTimer;
+        cryptodto::UDPChannel* mChannel;
+        std::atomic<uint32_t> mTxSequence;
+        std::shared_ptr<afv::VoiceCompressionSink> mVoiceSink;
+        std::shared_ptr<audio::SpeexPreprocessor> mVoiceFilter;
+        std::shared_ptr<audio::WavSampleStorage> mWavSampleStorage;
+        std::shared_ptr<audio::RecordedSampleSource> mRecordedSampleSource;
+        std::shared_ptr<audio::SourceToSinkAdapter> mAdapter;
+        std::vector<std::vector<unsigned char>> mStoredData;
+        bool looped;
+        bool playCachedData;
+        unsigned int cacheNum;
         std::string mClientName;
-                    std::string mATISFileName;
-
-        
+        std::string mATISFileName;
     public:
     };
 }

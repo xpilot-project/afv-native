@@ -5,7 +5,7 @@ class AfvNativeConan(ConanFile):
     version = "1.2.0"
     license = "3-Clause BSD"
     author = "Chris Collins <kuroneko@sysadninjas.net>"
-    url = "https://github.com/xsquawkbox/AFV-Native"
+    url = "https://github.com/vatis-project/AFV-Native"
     description = "Portable, Native Implementation of the AFV Interface"
     topics = ("vatsim", "afv", "voice", "portable")
     settings = "os", "compiler", "build_type", "arch"
@@ -32,12 +32,11 @@ class AfvNativeConan(ConanFile):
     }
     generators = "cmake"
     requires = [
-        "msgpack/[~3.2.0]@bincrafters/stable",
-        "jsonformoderncpp/[~3.7.0]@vthiery/stable",
-        "openssl/1.1.1i",
-        "libcurl/[~7.74.0]",
-        "libevent/[~2.1.12]",
-        "libopus/1.3.1@xsquawkbox/devel",
+        "msgpack/3.3.0",
+        "nlohmann_json/3.9.1",
+        "openssl/1.1.1k",
+        "libcurl/7.75.0",
+        "libevent/2.1.12"
     ]
     build_requires = [
     ]
@@ -68,12 +67,6 @@ class AfvNativeConan(ConanFile):
     def configure(self):
         pass
 
-    def requirements(self):
-        if self.options.audio_library == "soundio":
-            self.requires("libsoundio/2.0.0@xsquawkbox/devel")
-        elif self.options.audio_library == "portaudio":
-            self.requires("portaudio/v190600.20161030@bincrafters/stable")
-
     def build_requirements(self):
         if self.options.build_examples:
             self.build_requires("glew/2.2.0rc2@xsquawkbox/devel")
@@ -100,6 +93,6 @@ class AfvNativeConan(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["afv_native", "speexdsp"]
+        self.cpp_info.libs = ["afv_native"]
         if self.settings.compiler == 'Visual Studio':
             self.cpp_info.defines += ["_USE_MATH_DEFINES"]

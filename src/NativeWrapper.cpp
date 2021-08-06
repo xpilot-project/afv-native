@@ -22,14 +22,6 @@ namespace atisapi
     std::unique_ptr<std::thread> eventThread;
     std::atomic<bool>keepAlive{ false };
     std::atomic<bool> isInitialized{ false };
-    afv_native::audio::AudioDevice::Api mAudioApi;
-    int mInputDevice;
-
-    typedef std::map<afv_native::audio::AudioDevice::Api, std::string> ApiProviderMap;
-    typedef std::map<int, afv_native::audio::AudioDevice::DeviceInfo> AudioDeviceMap;
-
-    std::map<afv_native::audio::AudioDevice::Api, std::string> mAudioProviders;
-    std::map<int, afv_native::audio::AudioDevice::DeviceInfo> mInputDevices;
 }
 
 using namespace atisapi;
@@ -37,7 +29,7 @@ using namespace atisapi;
 #ifdef __cplusplus
 extern "C" {
 
-    AFV_API void Atis_Initialize(char* resourcePath, char* atisFile, char* clientName)
+    AFV_API void Initialize(char* atisFile, char* clientName)
     {
         #ifdef WIN32
         WORD wVersionRequested;
@@ -48,7 +40,6 @@ extern "C" {
 
         ev_base = event_base_new();
         client = std::make_unique<afv_native::ATISClient>(ev_base, atisFile, clientName);
-        mAudioProviders = afv_native::audio::AudioDevice::getAPIs();
 
         keepAlive = true;
         eventThread = std::make_unique<std::thread>([]
@@ -63,7 +54,7 @@ extern "C" {
         isInitialized = true;
     }
 
-    AFV_API void Atis_Destroy()
+    AFV_API void Shutdown()
     {
         keepAlive = false;
         if (eventThread->joinable())
@@ -77,71 +68,71 @@ extern "C" {
         #endif
     }
 
-    AFV_API bool Atis_IsInitialized()
+    AFV_API bool IsInitialized()
     {
         return isInitialized;
     }
 
-    AFV_API void Atis_SetCredentials(const char* username, const char* password)
+    AFV_API void SetCredentials(const char* username, const char* password)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setCredentials(std::string(username), std::string(password));
     }
 
-    AFV_API void Atis_SetCallsign(const char* callsign)
+    AFV_API void SetCallsign(const char* callsign)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setCallsign(std::string(callsign));
     }
 
-    AFV_API bool Atis_IsVoiceConnected()
+    AFV_API bool IsVoiceConnected()
     {
         return client->isVoiceConnected();
     }
 
-    AFV_API bool Atis_IsAPIConnected()
+    AFV_API bool IsAPIConnected()
     {
         return client->isAPIConnected();
     }
 
-    AFV_API bool Atis_Connect()
+    AFV_API bool ConnectApi()
     {
         return client->connect();
     }
 
-    AFV_API void Atis_Disconnect()
+    AFV_API void DisconnectApi()
     {
         client->disconnect();
     }
 
-    AFV_API void Atis_StartAudio()
+    AFV_API void StartAudio()
     {
         client->startAudio();
     }
 
-    AFV_API void Atis_StopAudio()
+    AFV_API void StopAudio()
     {
         client->stopAudio();
     }
 
-    AFV_API bool Atis_IsPlaying()
+    AFV_API bool IsPlaying()
     {
         return client->isPlaying();
     }
 
-    AFV_API void Atis_SetClientPosition(double lat, double lon, double amslm, double aglm)
+    AFV_API void SetClientPosition(double lat, double lon, double amslm, double aglm)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setClientPosition(lat, lon, amslm, aglm);
     }
 
-    AFV_API void Atis_SetFrequency(unsigned int frequency)
+    AFV_API void SetFrequency(unsigned int frequency)
     {
         std::lock_guard<std::mutex> lock(afvMutex);
         client->setFrequency(frequency);
     }
 
-    AFV_API void Atis_RaiseClientEvent(void(*callback)(afv_native::ClientEventType evt, int data))
+    AFV_API void RaiseClientEvent(void(*callback)(afv_native::ClientEventType evt, int data))
     {
         client->ClientEventCallback.addCallback(nullptr, [callback](afv_native::ClientEventType evt, void* data)
         {
