@@ -43,7 +43,7 @@ extern "C" {
         WSAStartup(wVersionRequested, &wsaData);
         #endif
 
-        afv_native::setLogger(nullptr);
+        //afv_native::setLogger(nullptr);
 
         ev_base = event_base_new();
         client = std::make_unique<afv_native::Client>(ev_base, resourcePath, numRadios, clientName);
@@ -215,28 +215,6 @@ extern "C" {
                 mAudioApi = it->first;
                 mInputDevices = afv_native::audio::AudioDevice::getCompatibleInputDevicesForApi(mAudioApi);
                 mOutputDevices = afv_native::audio::AudioDevice::getCompatibleOutputDevicesForApi(mAudioApi);
-            }
-        }
-    }
-
-    AFV_API void SetAudioDevice()
-    {
-        std::lock_guard<std::mutex> lock(afvMutex);
-        {
-            client->setAudioApi(mAudioApi);
-            try
-            {
-                client->setAudioInputDevice(mInputDevices.at(mInputDevice).id);
-            }
-            catch (std::out_of_range&)
-            {
-            }
-            try
-            {
-                client->setAudioOutputDevice(mOutputDevices.at(mOutputDevice).id);
-            }
-            catch (std::out_of_range&)
-            {
             }
         }
     }
