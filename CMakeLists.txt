@@ -140,7 +140,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
 
 if(WIN32)
-	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/2.0.0/windows-opus.lib)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/windows-opus.lib)
 	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/windows-opus.lib)
 	
 	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/2.0.0/windows-portaudio_static_x64.lib)
@@ -148,8 +148,17 @@ if(WIN32)
 		
 	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/2.0.0/windows-speexdsp.lib)
 	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-speexdsp.lib)
-elseif(UNIX)
-elseif(APPLE)
+endif()
+
+if(APPLE)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/2.0.0/macos-libopus.a)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libopus.a)
+
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/macos-libportaudio.a)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libportaudio.a)
+		
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/2.0.0/macos-libspeexdsp.a)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libspeexdsp.a)
 endif()
 
 file(DOWNLOAD ${OPUS_URL} ${OPUS_LIBARY_PATH})
