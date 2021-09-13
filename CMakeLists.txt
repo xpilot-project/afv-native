@@ -143,21 +143,21 @@ if(WIN32)
 	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/windows-opus.lib)
 	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/windows-opus.lib)
 	
-	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/2.0.0/windows-portaudio_static_x64.lib)
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/windows-portaudio_static_x64.lib)
 	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-portaudio_static_x64.lib)
 		
-	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/2.0.0/windows-speexdsp.lib)
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/windows-speexdsp.lib)
 	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-speexdsp.lib)
 endif()
 
 if(APPLE)
-	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/2.0.0/macos-libopus.a)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/macos-libopus.a)
 	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libopus.a)
 
 	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/macos-libportaudio.a)
 	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libportaudio.a)
 		
-	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/2.0.0/macos-libspeexdsp.a)
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/macos-libspeexdsp.a)
 	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libspeexdsp.a)
 endif()
 
@@ -225,3 +225,5 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/include" # source directory
 		FILES_MATCHING # install only matched files
 		PATTERN "*.h" # select header files
 		)
+
+set_target_properties(afv_native PROPERTIES OUTPUT_NAME "afv")
