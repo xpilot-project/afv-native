@@ -47,7 +47,7 @@ using namespace afv_native::afv;
 const float fxClickGain = 1.1f;
 const float fxBlockToneGain = 0.13f;
 const float fxBlockToneFreq = 180.0f;
-const float fxAcBusGain = 0.0028f;
+const float fxAcBusGain = 0.005f;
 const float fxVhfWhiteNoiseGain = 0.17f;
 const float fxHfWhiteNoiseGain = 0.16f;
 
@@ -65,7 +65,6 @@ RadioSimulation::RadioSimulation(
         unsigned int radioCount):
         IncomingAudioStreams(0),
         AudiableAudioStreams(nullptr),
-        RadioStateCallback(),
         mEvBase(evBase),
         mResources(std::move(resources)),
         mChannel(),
@@ -208,8 +207,8 @@ bool RadioSimulation::_process_radio(
                             hfGain = 0.0f;
                         }
                         vhfGain = 0.0f;
-                        acBusGain = fxAcBusGain + 0.001f;
-                        voiceGain = 0.38f;
+                        acBusGain = 0.001f;
+                        voiceGain = 0.20f;
                     }
                     else
                     {

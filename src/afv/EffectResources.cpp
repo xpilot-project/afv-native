@@ -58,9 +58,9 @@ try_load(const std::string &file)
 
 EffectResources::EffectResources(const string &file_path)
 {
-    mClick = try_load(file_path+"/Click_f32.wav");
-    mCrackle = try_load(file_path+"/Crackle_f32.wav");
-    mAcBus = try_load(file_path + "/AC_Bus_f32.wav");
-    mVhfWhiteNoise = try_load(file_path + "/WhiteNoise_f32.wav");
-    mHfWhiteNoise = try_load(file_path + "/HF_WhiteNoise_f32.wav");
+    mClick = try_load(file_path+"/Click.wav");
+    mCrackle = try_load(file_path+"/Crackle.wav");
+    mAcBus = try_load(file_path + "/AC_Bus.wav");
+    mVhfWhiteNoise = try_load(file_path + "/WhiteNoise.wav");
+    mHfWhiteNoise = try_load(file_path + "/HF_WhiteNoise.wav");
 };

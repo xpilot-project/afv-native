@@ -78,7 +78,8 @@ bool PortAudioAudioDevice::open()
 
     PaStreamParameters inDevParam, outDevParam;
 
-    bool hasInputDevice, hasOutputDevice = true;
+    bool hasInputDevice = true;
+    bool hasOutputDevice = true;
 
     //FIXME: we actually need to populate the entire PaStreamParameters struct because of the need to get default latencies.
     if (!getDeviceForName(mInputDeviceName, true, inDevParam)) {
