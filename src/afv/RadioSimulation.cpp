@@ -213,7 +213,7 @@ size_t rxIter)
 
                     if (freqIsHF(tx.Frequency))
                     {
-                        if (mRadioState[rxIter].mHfSquelch)
+                        if (!mRadioState[rxIter].mHfSquelch)
                         {
                             hfGain = fxHfWhiteNoiseGain;
                         }
