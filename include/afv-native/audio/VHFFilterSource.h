@@ -40,10 +40,6 @@
 #include <afv-native/audio/BiQuadFilter.h>
 #include <afv-native/audio/ISampleSource.h>
 
-namespace chunkware_simple {
-    class SimpleComp;
-}
-
 namespace afv_native {
     namespace audio {
         /** VHFFilterSource implements the three filters we use to simulate the limited bandwidth of an airband VHF radio.
@@ -56,7 +52,6 @@ namespace afv_native {
         class VHFFilterSource {
         public:
             explicit VHFFilterSource();
-            virtual ~VHFFilterSource();
 
             /** transformFrame lets use apply this filter to a normal buffer, without following the sink/source flow.
              *
@@ -64,12 +59,10 @@ namespace afv_native {
              */
             void transformFrame(SampleType *bufferOut, SampleType const bufferIn[]);
 
-        protected:
+        private:
             void setupPresets();
-        
-            chunkware_simple::SimpleComp *compressor;
-            float compressorPostGain;
-            std::vector<BiQuadFilter> mFilters;
+            double m_outputGain = pow(10.0f, (-10.0/20.0));
+            std::vector<BiQuadFilter> m_filters;
         };
     }
 }

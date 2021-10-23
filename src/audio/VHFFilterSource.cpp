@@ -32,53 +32,37 @@
 */
 
 #include "afv-native/audio/VHFFilterSource.h"
-#include <SimpleComp.h>
 
 using namespace afv_native::audio;
 
-VHFFilterSource::VHFFilterSource():
-    compressor(new chunkware_simple::SimpleComp())
+VHFFilterSource::VHFFilterSource()
 {
-    compressor->setSampleRate(sampleRateHz);
-    compressor->setAttack(5.0);
-    compressor->setRelease(10.0);
-    compressor->setThresh(16);
-    compressor->setRatio(6);
-    compressor->initRuntime();
-    compressorPostGain = pow(10.0f, (-5.5/20.0));
-    
     setupPresets();
-}
-
-VHFFilterSource::~VHFFilterSource()
-{
-    delete compressor;
-};
-
-void VHFFilterSource::setupPresets()
-{
-    mFilters.push_back(BiQuadFilter::highPassFilter(44100, 310, 0.25));
-    mFilters.push_back(BiQuadFilter::peakingEQ(44100, 450, 0.75, 17.0));
-    mFilters.push_back(BiQuadFilter::peakingEQ(44100, 1450, 1.0, 25.0));
-    mFilters.push_back(BiQuadFilter::peakingEQ(44100, 2000, 1.0, 25.0));
-    mFilters.push_back(BiQuadFilter::lowPassFilter(44100, 2500, 0.25));
 }
 
 /** transformFrame lets use apply this filter to a normal buffer, without following the sink/source flow.
  *
  * It always performs a copy of the data from In to Out at the very least.
  */
-void VHFFilterSource::transformFrame(SampleType *bufferOut, SampleType const bufferIn[]) {
-    double sl, sr;
-    for (unsigned i = 0; i < frameSizeSamples; i++) {
-        sl = bufferIn[i];
-        sr = sl;
-        compressor->process(sl, sr);
-        for (int band = 0; band < mFilters.size(); band++)
+void VHFFilterSource::transformFrame(SampleType *bufferOut, SampleType const bufferIn[])
+{
+    for(unsigned int i = 0; i < frameSizeSamples; i++)
+    {
+        for(unsigned int band = 0; band < m_filters.size(); band++)
         {
-            sl = mFilters[band].TransformOne(sl);
+            bufferOut[i] = m_filters[band].TransformOne(bufferIn[i]);
         }
-        sl *= static_cast<float>(compressorPostGain);
-        bufferOut[i] = sl;
+        bufferOut[i] *= static_cast<SampleType>(m_outputGain);
     }
+}
+
+void VHFFilterSource::setupPresets()
+{
+    m_filters.push_back(BiQuadFilter::build(1.0, 0.0, 0.0, -0.01, 0.0, 0.0));
+    m_filters.push_back(BiQuadFilter::build(1.0, -1.7152995098277, 0.761385315196423, 0.0, 1.0, 0.753162969638192));
+    m_filters.push_back(BiQuadFilter::build(1.0, -1.71626681678914, 0.762433947105989, 1.0, -2.29278115712509, 1.00033663293577));
+    m_filters.push_back(BiQuadFilter::build(1.0, -1.79384214686345, 0.909678364879526, 1.0, -2.05042803669041, 1.05048374237779));
+    m_filters.push_back(BiQuadFilter::build(1.0, -1.79409285259567, 0.909822671281377, 1.0, -1.95188929743297, 0.951942325888074));
+    m_filters.push_back(BiQuadFilter::build(1.0, -1.9390093095185, 0.9411847259142, 1.0, -1.82547932903698, 1.09157529229851));
+    m_filters.push_back(BiQuadFilter::build(1.0, -1.94022767750807, 0.942630574503006, 1.0, -1.67241244173042, 0.916184578658119));
 }

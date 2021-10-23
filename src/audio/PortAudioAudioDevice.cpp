@@ -161,7 +161,6 @@ bool PortAudioAudioDevice::getDeviceForName(const string &deviceName, bool forIn
     return false;
 }
 
-
 int PortAudioAudioDevice::paAudioCallback(
         const void *inputBuffer,
         void *outputBuffer,

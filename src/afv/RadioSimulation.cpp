@@ -44,7 +44,7 @@
 using namespace afv_native;
 using namespace afv_native::afv;
 
-const float fxClickGain = 1.1f;
+const float fxClickGain = 1.3f;
 const float fxBlockToneGain = 0.13f;
 const float fxBlockToneFreq = 180.0f;
 const float fxAcBusGain = 0.005f;
@@ -52,8 +52,8 @@ const float fxVhfWhiteNoiseGain = 0.17f;
 const float fxHfWhiteNoiseGain = 0.16f;
 
 CallsignMeta::CallsignMeta():
-        source(),
-        transceivers()
+    source(),
+    transceivers()
 {
     source = std::make_shared<RemoteVoiceSource>();
 }
@@ -63,26 +63,26 @@ RadioSimulation::RadioSimulation(
         std::shared_ptr<EffectResources> resources,
         cryptodto::UDPChannel *channel,
         unsigned int radioCount):
-        IncomingAudioStreams(0),
-        AudiableAudioStreams(nullptr),
-        mEvBase(evBase),
-        mResources(std::move(resources)),
-        mChannel(),
-        mStreamMapLock(),
-        mIncomingStreams(),
-        mRadioStateLock(),
-        mPtt(false),
-        mLastFramePtt(false),
-        mTxRadio(0),
-        mTxSequence(0),
-        mRadioState(radioCount),
-        mChannelBuffer(nullptr),
-        mMixingBuffer(nullptr),
-        mFetchBuffer(nullptr),
-        mVoiceSink(std::make_shared<VoiceCompressionSink>(*this)),
-        mVoiceFilter(),
-        mMaintenanceTimer(mEvBase, std::bind(&RadioSimulation::maintainIncomingStreams, this)),
-        mVuMeter(300 / audio::frameLengthMs) // VU is a 300ms zero to peak response...
+    IncomingAudioStreams(0),
+    AudiableAudioStreams(nullptr),
+    mEvBase(evBase),
+    mResources(std::move(resources)),
+    mChannel(),
+    mStreamMapLock(),
+    mIncomingStreams(),
+    mRadioStateLock(),
+    mPtt(false),
+    mLastFramePtt(false),
+    mTxRadio(0),
+    mTxSequence(0),
+    mRadioState(radioCount),
+    mChannelBuffer(nullptr),
+    mMixingBuffer(nullptr),
+    mFetchBuffer(nullptr),
+    mVoiceSink(std::make_shared<VoiceCompressionSink>(*this)),
+    mVoiceFilter(),
+    mMaintenanceTimer(mEvBase, std::bind(&RadioSimulation::maintainIncomingStreams, this)),
+    mVuMeter(300 / audio::frameLengthMs) // VU is a 300ms zero to peak response...
 {
     mChannelBuffer = new audio::SampleType[audio::frameSizeSamples];
     mMixingBuffer = new audio::SampleType[audio::frameSizeSamples];
@@ -154,6 +154,21 @@ RadioSimulation::mix_buffers(audio::SampleType* RESTRICT src_dst, const audio::S
     }
 }
 
+bool RadioSimulation::getTxActive(unsigned int radio) {
+    if (radio != mTxRadio) {
+        return false;
+    }
+    return mPtt.load();
+}
+
+bool
+RadioSimulation::getRxActive(unsigned int radio)
+{
+    std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
+
+    return (mRadioState[radio].mLastRxCount > 0);
+}
+
 inline bool
 freqIsHF(unsigned int freq)
 {
@@ -162,8 +177,8 @@ freqIsHF(unsigned int freq)
 
 bool RadioSimulation::_process_radio(
         const std::map<void *, audio::SampleType[audio::frameSizeSamples]> &sampleCache,
-        std::map<void *, audio::SampleType[audio::frameSizeSamples]> &eqSampleCache,
-                                     size_t rxIter)
+std::map<void *, audio::SampleType[audio::frameSizeSamples]> &eqSampleCache,
+size_t rxIter)
 {
     ::memset(mChannelBuffer, 0, audio::frameSizeBytes);
     if (mPtt.load() && mTxRadio == rxIter) {
@@ -181,7 +196,7 @@ bool RadioSimulation::_process_radio(
     uint32_t concurrentStreams = 0;
     for (auto &srcPair: mIncomingStreams) {
         if (!srcPair.second.source || !srcPair.second.source->isActive() ||
-            (sampleCache.find(srcPair.second.source.get()) == sampleCache.end())) {
+                (sampleCache.find(srcPair.second.source.get()) == sampleCache.end())) {
             continue;
         }
         bool mUseStream = false;
@@ -226,9 +241,9 @@ bool RadioSimulation::_process_radio(
             // then include this stream.
             try {
                 mix_buffers(
-                        mChannelBuffer,
-                        sampleCache.at(srcPair.second.source.get()),
-                        voiceGain * mRadioState[rxIter].Gain);
+                            mChannelBuffer,
+                            sampleCache.at(srcPair.second.source.get()),
+                            voiceGain * mRadioState[rxIter].Gain);
                 concurrentStreams++;
             } catch (const std::out_of_range &) {
                 LOG("RadioSimulation", "internal error:  Tried to mix uncached stream");
@@ -237,22 +252,11 @@ bool RadioSimulation::_process_radio(
     }
     AudiableAudioStreams[rxIter].store(concurrentStreams);
 
-    if (!mRadioState[rxIter].mIsReceiving && AudiableAudioStreams[rxIter].load() > 0)
-    {
-        mRadioState[rxIter].mIsReceiving = true;
-        mLastReceivedRadio = rxIter;
-        RadioStateCallback.invokeAll(afv::RadioSimulationState::RxStarted);
-    }
-    else if (mRadioState[rxIter].mIsReceiving && AudiableAudioStreams[rxIter].load() <= 0)
-    {
-        mRadioState[rxIter].mIsReceiving = false;
-        RadioStateCallback.invokeAll(afv::RadioSimulationState::RxStopped);
-    }
-
     if (concurrentStreams > 0) {
+
         if (!mRadioState[rxIter].mBypassEffects) {
-            // if FX are enabled, and we muxed any streams, eq the buffer now to apply the bandwidth simulation,
-            // but don't interfere with the effects.
+
+            mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
             mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
 
             set_radio_effects(rxIter);
@@ -313,7 +317,7 @@ audio::SourceStatus RadioSimulation::getAudioFrame(audio::SampleType *bufferOut)
     // first, pull frames from all active audio sources.
     for (auto &src: mIncomingStreams) {
         if (src.second.source && src.second.source->isActive() &&
-            (sampleCache.find(src.second.source.get()) == sampleCache.end())) {
+                (sampleCache.find(src.second.source.get()) == sampleCache.end())) {
             const auto rv = src.second.source->getAudioFrame(sampleCache[src.second.source.get()]);
             if (rv != audio::SourceStatus::OK) {
                 sampleCache.erase(src.second.source.get());
@@ -459,17 +463,17 @@ void RadioSimulation::setUDPChannel(cryptodto::UDPChannel *newChannel)
     mChannel = newChannel;
     if (mChannel != nullptr) {
         mChannel->registerDtoHandler(
-                "AR", [this](const unsigned char *data, size_t len) {
-                    try {
-                        dto::AudioRxOnTransceivers rxAudio;
-                        auto objHdl = msgpack::unpack(reinterpret_cast<const char *>(data), len);
-                        objHdl.get().convert(rxAudio);
-                        this->rxVoicePacket(rxAudio);
-                    } catch (const msgpack::type_error &e) {
-                        LOG("radiosimulation", "unable to unpack audio data received: %s", e.what());
-                        LOGDUMPHEX("radiosimulation", data, len);
-                    }
-                });
+                    "AR", [this](const unsigned char *data, size_t len) {
+            try {
+                dto::AudioRxOnTransceivers rxAudio;
+                auto objHdl = msgpack::unpack(reinterpret_cast<const char *>(data), len);
+                objHdl.get().convert(rxAudio);
+                this->rxVoicePacket(rxAudio);
+            } catch (const msgpack::type_error &e) {
+                LOG("radiosimulation", "unable to unpack audio data received: %s", e.what());
+                LOGDUMPHEX("radiosimulation", data, len);
+            }
+        });
     }
 }
 
@@ -547,9 +551,4 @@ void RadioSimulation::setEnableHfSquelch(bool enableSquelch)
     {
         thisRadio.mHfSquelch = enableSquelch;
     }
-}
-
-int RadioSimulation::lastReceivedRadio() const
-{
-    return mLastReceivedRadio;
 }

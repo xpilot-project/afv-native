@@ -101,5 +101,12 @@ namespace afv_native
             filter.setPeakingEq(sampleRate, centreFrequency, q, dbGain);
             return filter;
         }
+
+        BiQuadFilter BiQuadFilter::build(double a0, double a1, double a2, double b0, double b1, double b2)
+        {
+            BiQuadFilter filter;
+            filter.setCoefficients(a0, a1, a2, b0, b1, b2);
+            return filter;
+        }
     }
 } 

@@ -55,6 +55,7 @@ namespace afv_native {
             static BiQuadFilter lowPassFilter(float sampleRate, float cutoffFrequency, float q);
             static BiQuadFilter highPassFilter(float sampleRate, float cutoffFrequency, float q);
             static BiQuadFilter peakingEQ(float sampleRate, float centreFrequency, float q, float dbGain);
+            static BiQuadFilter build(double a0, double a1, double a2, double b0, double b1, double b2);
         private:
             double m_a0 = 0.0;
             double m_a1 = 0.0;

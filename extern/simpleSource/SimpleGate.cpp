@@ -6,7 +6,7 @@
  *  Version		: 1.12
  *  Implements	: SimpleGate, SimpleGateRms
  *
- *	© 2006, ChunkWare Music Software, OPEN-SOURCE
+ *	2006, ChunkWare Music Software, OPEN-SOURCE
  *
  *	Permission is hereby granted, free of charge, to any person obtaining a
  *	copy of this software and associated documentation files (the "Software"),
@@ -27,60 +27,59 @@
  *	DEALINGS IN THE SOFTWARE.
  */
 
-
 #include "SimpleGate.h"
 
 namespace chunkware_simple
 {
-	//-------------------------------------------------------------
-	SimpleGate::SimpleGate()
-		: AttRelEnvelope( 1.0, 100.0 )
-		, threshdB_( 0.0 )
-		, thresh_( 1.0 )
-		, env_( DC_OFFSET )
-	{
-	}
+    //-------------------------------------------------------------
+    SimpleGate::SimpleGate()
+        : AttRelEnvelope( 1.0, 100.0 )
+        , threshdB_( 0.0 )
+        , thresh_( 1.0 )
+        , env_( DC_OFFSET )
+    {
+    }
 
-	//-------------------------------------------------------------
-	void SimpleGate::setThresh( double dB )
-	{
-		threshdB_ = dB;
-		thresh_ = dB2lin( dB );
-	}
+    //-------------------------------------------------------------
+    void SimpleGate::setThresh( double dB )
+    {
+        threshdB_ = dB;
+        thresh_ = dB2lin( dB );
+    }
 
-	//-------------------------------------------------------------
-	void SimpleGate::initRuntime( void )
-	{
-		env_ = DC_OFFSET;
-	}
+    //-------------------------------------------------------------
+    void SimpleGate::initRuntime( void )
+    {
+        env_ = DC_OFFSET;
+    }
 
-	//-------------------------------------------------------------
-	// simple gate with RMS detection
-	//-------------------------------------------------------------
-	SimpleGateRms::SimpleGateRms()
-		: ave_( 5.0 )
-		, aveOfSqrs_( DC_OFFSET )
-	{
-	}
+    //-------------------------------------------------------------
+    // simple gate with RMS detection
+    //-------------------------------------------------------------
+    SimpleGateRms::SimpleGateRms()
+        : ave_( 5.0 )
+        , aveOfSqrs_( DC_OFFSET )
+    {
+    }
 
-	//-------------------------------------------------------------
-	void SimpleGateRms::setSampleRate( double sampleRate )
-	{
-		SimpleGate::setSampleRate( sampleRate );
-		ave_.setSampleRate( sampleRate );
-	}
+    //-------------------------------------------------------------
+    void SimpleGateRms::setSampleRate( double sampleRate )
+    {
+        SimpleGate::setSampleRate( sampleRate );
+        ave_.setSampleRate( sampleRate );
+    }
 
-	//-------------------------------------------------------------
-	void SimpleGateRms::setWindow( double ms )
-	{
-		ave_.setTc( ms );
-	}
+    //-------------------------------------------------------------
+    void SimpleGateRms::setWindow( double ms )
+    {
+        ave_.setTc( ms );
+    }
 
-	//-------------------------------------------------------------
-	void SimpleGateRms::initRuntime( void )
-	{
-		SimpleGate::initRuntime();
-		aveOfSqrs_ = DC_OFFSET;
-	}
+    //-------------------------------------------------------------
+    void SimpleGateRms::initRuntime( void )
+    {
+        SimpleGate::initRuntime();
+        aveOfSqrs_ = DC_OFFSET;
+    }
 
 }	// end namespace chunkware_simple

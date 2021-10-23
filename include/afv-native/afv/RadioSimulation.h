@@ -49,6 +49,7 @@
 #include "afv-native/audio/PinkNoiseGenerator.h"
 #include "afv-native/audio/SineToneSource.h"
 #include "afv-native/audio/SpeexPreprocessor.h"
+#include "afv-native/audio/SimpleCompressorEffect.h"
 #include "afv-native/audio/VHFFilterSource.h"
 #include "afv-native/cryptodto/UDPChannel.h"
 #include "afv-native/event/EventCallbackTimer.h"
@@ -71,6 +72,7 @@ namespace afv_native {
             std::shared_ptr<audio::RecordedSampleSource> VhfWhiteNoise;
             std::shared_ptr<audio::RecordedSampleSource> HfWhiteNoise;
             std::shared_ptr<audio::SineToneSource> BlockTone;
+            audio::SimpleCompressorEffect simpleCompressorEffect;
             audio::VHFFilterSource vhfFilter;
             int mLastRxCount;
             bool mBypassEffects;
@@ -125,6 +127,9 @@ namespace afv_native {
             void setFrequency(unsigned int radio, unsigned int frequency);
             void setGain(unsigned int radio, float gain);
             void setTxRadio(unsigned int radio);
+
+            bool getTxActive(unsigned int radio);
+            bool getRxActive(unsigned int radio);
 
             void setPtt(bool pressed);
             void setUDPChannel(cryptodto::UDPChannel *newChannel);
