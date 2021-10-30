@@ -56,11 +56,11 @@ try_load(const std::string &file)
     return make_shared<audio::WavSampleStorage>(*audData);
 }
 
-EffectResources::EffectResources(const string &file_path)
+EffectResources::EffectResources()
 {
-    mClick = try_load(file_path+"/Click.wav");
-    mCrackle = try_load(file_path+"/Crackle.wav");
-    mAcBus = try_load(file_path + "/AC_Bus.wav");
-    mVhfWhiteNoise = try_load(file_path + "/WhiteNoise.wav");
-    mHfWhiteNoise = try_load(file_path + "/HF_WhiteNoise.wav");
+    mClick = try_load(":/Resources/Samples/Click.wav");
+    mCrackle = try_load(":/Resources/Samples/Crackle.wav");
+    mAcBus = try_load(":/Resources/Samples/AC_Bus.wav");
+    mVhfWhiteNoise = try_load(":/Resources/Samples/WhiteNoise.wav");
+    mHfWhiteNoise = try_load(":/Resources/Samples/HF_WhiteNoise.wav");
 };

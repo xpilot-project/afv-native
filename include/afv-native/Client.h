@@ -80,7 +80,6 @@ namespace afv_native {
          */
         Client(
                 struct event_base *evBase,
-                const std::string &resourceBasePath,
                 unsigned int numRadios = 2,
                 const std::string &clientName = "AFV-Native",
                 std::string baseUrl = "https://voice1.vatsim.uk");

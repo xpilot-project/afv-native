@@ -44,11 +44,10 @@ using namespace afv_native;
 
 Client::Client(
         struct event_base *evBase,
-        const std::string &resourceBasePath,
         unsigned int numRadios,
         const std::string &clientName,
         std::string baseUrl):
-        mFxRes(std::make_shared<afv::EffectResources>(resourceBasePath)),
+        mFxRes(std::make_shared<afv::EffectResources>()),
         mEvBase(evBase),
         mTransferManager(mEvBase),
         mAPISession(mEvBase, mTransferManager, std::move(baseUrl), clientName),

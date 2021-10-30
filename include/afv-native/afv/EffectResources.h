@@ -49,7 +49,7 @@ namespace afv_native {
             std::shared_ptr<audio::ISampleStorage> mVhfWhiteNoise;
             std::shared_ptr<audio::ISampleStorage> mHfWhiteNoise;
 
-            explicit EffectResources(const std::string &basePath);
+            explicit EffectResources();
         };
     }
 }
