@@ -61,7 +61,6 @@ namespace afv_native {
 
         private:
             void setupPresets();
-            double m_outputGain = pow(10.0f, (-2.5/20.0));
             std::vector<BiQuadFilter> m_filters;
         };
     }

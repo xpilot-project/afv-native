@@ -52,15 +52,14 @@ void VHFFilterSource::transformFrame(SampleType *bufferOut, SampleType const buf
         {
             bufferOut[i] = m_filters[band].TransformOne(bufferIn[i]);
         }
-        bufferOut[i] *= static_cast<SampleType>(m_outputGain);
     }
 }
 
 void VHFFilterSource::setupPresets()
 {
     m_filters.push_back(BiQuadFilter::highPassFilter(sampleRateHz, 310, 0.25));
-    m_filters.push_back(BiQuadFilter::peakingEQ(sampleRateHz, 450, 0.75, 17.0));
-    m_filters.push_back(BiQuadFilter::peakingEQ(sampleRateHz, 1450, 1.0, 12.5));
-    m_filters.push_back(BiQuadFilter::peakingEQ(sampleRateHz, 2000, 1.0, 12.5));
+    m_filters.push_back(BiQuadFilter::peakingEQ(sampleRateHz, 450, 0.75, 6.8));
+    m_filters.push_back(BiQuadFilter::peakingEQ(sampleRateHz, 1450, 1.0, 10.0));
+    m_filters.push_back(BiQuadFilter::peakingEQ(sampleRateHz, 2000, 1.0, 10.0));
     m_filters.push_back(BiQuadFilter::lowPassFilter(sampleRateHz, 2500, 0.25));
 }
