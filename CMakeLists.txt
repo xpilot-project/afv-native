@@ -78,9 +78,9 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/util/base64.h
 		include/afv-native/util/ChainedCallback.h
 		include/afv-native/util/monotime.h
-		include/afv-native/utility.h)
-
-add_library(afv_native STATIC
+		include/afv-native/utility.h
+		)
+add_library(afv_native SHARED
 		${AFV_NATIVE_HEADERS}
 		src/afv/APISession.cpp
 		src/afv/EffectResources.cpp
@@ -140,56 +140,64 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
 
 if(WIN32)
-	set(OPUS_LIBRARY ${CMAKE_SOURCE_DIR}/externals/windows/opus.lib)
-	set(PORTAUDIO_LIBRARY ${CMAKE_SOURCE_DIR}/externals/windows/portaudio.lib)
-	set(SPEEX_LIBRARY ${CMAKE_SOURCE_DIR}/externals/windows/speexdsp.lib)
-endif()
-
-if(UNIX)
-	set(OPUS_LIBRARY ${CMAKE_SOURCE_DIR}/externals/linux/libopus.a)
-	set(PORTAUDIO_LIBRARY ${CMAKE_SOURCE_DIR}/externals/linux/libportaudio.a)
-	set(SPEEX_LIBRARY ${CMAKE_SOURCE_DIR}/externals/linux/libspeexdsp.a)
-endif()
-
-if(APPLE)
-	set(OPUS_LIBRARY ${CMAKE_SOURCE_DIR}/externals/macos/libopus.a)
-	set(PORTAUDIO_LIBRARY ${CMAKE_SOURCE_DIR}/externals/macos/libportaudio.a)
-	set(SPEEX_LIBRARY ${CMAKE_SOURCE_DIR}/externals/macos/libspeexdsp.a)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/windows-opus.lib)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/windows-opus.lib)
+	
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/windows-portaudio_static_x64.lib)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-portaudio_static_x64.lib)
+		
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/windows-speexdsp.lib)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-speexdsp.lib)
 endif()
 
 if(APPLE)
-	find_library(CORE_AUDIO CoreAudio)
-	find_library(AUDIO_TOOLBOX AudioToolbox)
-	find_library(AUDIO_UNIT AudioUnit)
-	find_library(CORE_FOUNDATION CoreFoundation)
-	find_library(CORE_SERVICES CoreServices)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/macos-libopus.a)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libopus.a)
 
-	target_link_libraries(afv_native
-		PUBLIC
-		CONAN_PKG::openssl
-		CONAN_PKG::msgpack
-		CONAN_PKG::nlohmann_json
-		CONAN_PKG::libcurl
-		CONAN_PKG::libevent
-		${OPUS_LIBARY}
-		${PORTAUDIO_LIBRARY}
-		${SPEEXDSP_LIBRARY}
-		${CORE_AUDIO}
-		${AUDIO_TOOLBOX}
-		${AUDIO_UNIT}
-		${CORE_FOUNDATION}
-		${CORE_SERVICES})
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/macos-libportaudio.a)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libportaudio.a)
+		
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/macos-libspeexdsp.a)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libspeexdsp.a)
+endif()
+
+file(DOWNLOAD ${OPUS_URL} ${OPUS_LIBARY_PATH})
+file(DOWNLOAD ${PORTAUDIO_URL} ${PORTAUDIO_LIBRARY_PATH})
+file(DOWNLOAD ${SPEEXDSP_URL} ${SPEEXDSP_LIBRARY_PATH})
+
+if(APPLE)
+find_library(CORE_AUDIO CoreAudio)
+find_library(AUDIO_TOOLBOX AudioToolbox)
+find_library(AUDIO_UNIT AudioUnit)
+find_library(CORE_FOUNDATION CoreFoundation)
+find_library(CORE_SERVICES CoreServices)
+
+target_link_libraries(afv_native
+	PUBLIC
+	CONAN_PKG::openssl
+	CONAN_PKG::msgpack
+	CONAN_PKG::nlohmann_json
+	CONAN_PKG::libcurl
+	CONAN_PKG::libevent
+	${OPUS_LIBARY_PATH}
+	${PORTAUDIO_LIBRARY_PATH}
+	${SPEEXDSP_LIBRARY_PATH}
+	${CORE_AUDIO}
+	${AUDIO_TOOLBOX}
+	${AUDIO_UNIT}
+	${CORE_FOUNDATION}
+	${CORE_SERVICES})
 else()
-	target_link_libraries(afv_native
-		PUBLIC
-		CONAN_PKG::openssl
-		CONAN_PKG::msgpack
-		CONAN_PKG::nlohmann_json
-		CONAN_PKG::libcurl
-		CONAN_PKG::libevent
-		${OPUS_LIBARY}
-		${PORTAUDIO_LIBRARY}
-		${SPEEXDSP_LIBRARY})
+target_link_libraries(afv_native
+	PUBLIC
+	CONAN_PKG::openssl
+	CONAN_PKG::msgpack
+	CONAN_PKG::nlohmann_json
+	CONAN_PKG::libcurl
+	CONAN_PKG::libevent
+	${OPUS_LIBARY_PATH}
+	${PORTAUDIO_LIBRARY_PATH}
+	${SPEEXDSP_LIBRARY_PATH})
 endif()
 
 target_include_directories(afv_native
@@ -209,7 +217,8 @@ endif()
 install(TARGETS afv_native
 		RUNTIME DESTINATION bin
 		LIBRARY DESTINATION lib
-		ARCHIVE DESTINATION lib)
+		ARCHIVE DESTINATION lib
+		)
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/include" # source directory
 		DESTINATION "." # target directory
@@ -217,4 +226,4 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/include" # source directory
 		PATTERN "*.h" # select header files
 		)
 
-set_target_properties(afv_native PROPERTIES OUTPUT_NAME "afv_native")
+set_target_properties(afv_native PROPERTIES OUTPUT_NAME "afv")

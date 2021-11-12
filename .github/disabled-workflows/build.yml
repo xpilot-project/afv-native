@@ -23,23 +23,35 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Install Conan
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.6.x"
+          architecture: "x64"
+
+      - name: Install conan && conan package tools
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install conan
-          pip3 install conan_package_tools
+          python -m pip install --upgrade pip
+          pip install conan
+          pip install conan_package_tools
+
+      - name: Add conan repositories
+        run: |
+          conan remote add xpilot-project https://api.bintray.com/conan/jshannon/xpilot-project
+          conan remote add xsquawkbox-public https://api.bintray.com/conan/akuneko/xsquawkbox
+          conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
 
       - uses: actions/checkout@v1
         with:
-          submodules: recursive
+          submodules: "recursive"
 
-      - name: Create build environment
+      - name: Create Build Environment
         run: cmake -E make_directory ${{ github.workspace }}/build
 
       - name: Initialize Conan
         shell: bash
         working-directory: ${{ github.workspace }}/build
-        run: conan install .. --build missing
+        run: conan install $GITHUB_WORKSPACE --build missing
 
       - name: Configure CMake
         shell: bash
@@ -56,18 +68,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         with:
           name: ${{ matrix.kind }}
-          path: ${{ github.workspace }}/build/lib/libafv_native.a
+          path: ${{ github.workspace }}/build/lib/libafv_native.so
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         if: matrix.os == 'macos-latest'
         with:
           name: ${{ matrix.kind }}
-          path: ${{ github.workspace }}/build/lib/libafv_native.a
+          path: ${{ github.workspace }}/build/lib/libafv_native.dylib
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         if: matrix.os == 'windows-latest'
         with:
           name: ${{ matrix.kind }}
-          path: ${{ github.workspace }}/build/bin/afv_native.lib
+          path: ${{ github.workspace }}/build/bin/afv_native.dll
