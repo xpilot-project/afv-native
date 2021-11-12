@@ -14,10 +14,7 @@ if(MSVC)
 	endif()
 endif(MSVC)
 
-set(CMAKE_CXX_STANDARD 17)
-
-find_package(QT NAMES Qt5 COMPONENTS Core REQUIRED)
-find_package(Qt5 COMPONENTS Core REQUIRED)
+set(CMAKE_CXX_STANDARD 14)
 
 set(AFV_NATIVE_HEADERS
 		include/afv-native/Client.h
@@ -83,7 +80,7 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/util/monotime.h
 		include/afv-native/utility.h
 		)
-add_library(afv_native STATIC
+add_library(afv_native SHARED
 		${AFV_NATIVE_HEADERS}
 		src/afv/APISession.cpp
 		src/afv/EffectResources.cpp
@@ -134,7 +131,8 @@ add_library(afv_native STATIC
 		extern/simpleSource/SimpleHeader.h
 		extern/simpleSource/SimpleLimit.cpp
 		extern/simpleSource/SimpleLimit.h
-		src/audio/VHFFilterSource.cpp)
+		src/audio/VHFFilterSource.cpp
+		src/NativeWrapper.cpp)
 		
 # organise sources in generated projects.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${AFV_NATIVE_SOURCES})
@@ -142,22 +140,30 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/afv-native PREFIX "Headers
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/extern PREFIX "Third Party" FILES ${AFV_NATIVE_THIRDPARTY_SOURCES})
 
 if(WIN32)
-	set(OPUS_LIBRARY ${CMAKE_SOURCE_DIR}/externals/windows/opus.lib)
-	set(PORTAUDIO_LIBRARY ${CMAKE_SOURCE_DIR}/externals/windows/portaudio.lib)
-	set(SPEEX_LIBRARY ${CMAKE_SOURCE_DIR}/externals/windows/speexdsp.lib)
-endif()
-
-if(UNIX)
-set(OPUS_LIBRARY ${CMAKE_SOURCE_DIR}/externals/linux/libopus.a)
-set(PORTAUDIO_LIBRARY ${CMAKE_SOURCE_DIR}/externals/linux/libportaudio.a)
-set(SPEEX_LIBRARY ${CMAKE_SOURCE_DIR}/externals/linux/libspeexdsp.a)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/windows-opus.lib)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/windows-opus.lib)
+	
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/windows-portaudio_static_x64.lib)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-portaudio_static_x64.lib)
+		
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/windows-speexdsp.lib)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-speexdsp.lib)
 endif()
 
 if(APPLE)
-set(OPUS_LIBRARY ${CMAKE_SOURCE_DIR}/externals/macos/libopus.a)
-set(PORTAUDIO_LIBRARY ${CMAKE_SOURCE_DIR}/externals/macos/libportaudio.a)
-set(SPEEX_LIBRARY ${CMAKE_SOURCE_DIR}/externals/macos/libspeexdsp.a)
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/macos-libopus.a)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libopus.a)
+
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/macos-libportaudio.a)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libportaudio.a)
+		
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/macos-libspeexdsp.a)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libspeexdsp.a)
 endif()
+
+file(DOWNLOAD ${OPUS_URL} ${OPUS_LIBARY_PATH})
+file(DOWNLOAD ${PORTAUDIO_URL} ${PORTAUDIO_LIBRARY_PATH})
+file(DOWNLOAD ${SPEEXDSP_URL} ${SPEEXDSP_LIBRARY_PATH})
 
 if(APPLE)
 find_library(CORE_AUDIO CoreAudio)
@@ -173,9 +179,9 @@ target_link_libraries(afv_native
 	CONAN_PKG::nlohmann_json
 	CONAN_PKG::libcurl
 	CONAN_PKG::libevent
-	${OPUS_LIBARY}
-	${PORTAUDIO_LIBRARY}
-	${SPEEX_LIBRARY}
+	${OPUS_LIBARY_PATH}
+	${PORTAUDIO_LIBRARY_PATH}
+	${SPEEXDSP_LIBRARY_PATH}
 	${CORE_AUDIO}
 	${AUDIO_TOOLBOX}
 	${AUDIO_UNIT}
@@ -189,12 +195,10 @@ target_link_libraries(afv_native
 	CONAN_PKG::nlohmann_json
 	CONAN_PKG::libcurl
 	CONAN_PKG::libevent
-	${OPUS_LIBARY}
-	${PORTAUDIO_LIBRARY}
-	${SPEEX_LIBRARY})
+	${OPUS_LIBARY_PATH}
+	${PORTAUDIO_LIBRARY_PATH}
+	${SPEEXDSP_LIBRARY_PATH})
 endif()
-
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core)
 
 target_include_directories(afv_native
 		PRIVATE
@@ -210,10 +214,16 @@ if(MSVC)
 	target_compile_definitions(afv_native PUBLIC _USE_MATH_DEFINES)
 endif()
 
+install(TARGETS afv_native
+		RUNTIME DESTINATION bin
+		LIBRARY DESTINATION lib
+		ARCHIVE DESTINATION lib
+		)
+
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/include" # source directory
 		DESTINATION "." # target directory
 		FILES_MATCHING # install only matched files
 		PATTERN "*.h" # select header files
 		)
 
-set_target_properties(afv_native PROPERTIES OUTPUT_NAME "afv_native")
+set_target_properties(afv_native PROPERTIES OUTPUT_NAME "afv")
