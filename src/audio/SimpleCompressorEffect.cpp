@@ -25,7 +25,7 @@ void SimpleCompressorEffect::transformFrame(SampleType *bufferOut, const SampleT
     for(int i = 0; i < frameSizeSamples; i++)
     {
         double in1 = bufferIn[i];
-        double in2 = 0;
+        double in2 = in1;
         m_simpleCompressor->process(in1, in2);
         bufferOut[i] = static_cast<SampleType>(in1);
     }
