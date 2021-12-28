@@ -272,9 +272,11 @@ std::vector<afv::dto::Transceiver> Client::makeTransceiverDto()
 {
     std::vector<afv::dto::Transceiver> retSet;
     for (unsigned i = 0; i < mRadioState.size(); i++) {
-        retSet.emplace_back(
-                i, mRadioState[i].mNextFreq, mClientLatitude,
-                mClientLongitude, mClientAltitudeMSLM, mClientAltitudeGLM);
+        if(mRadioState[i].mNextFreq > 0) {
+            retSet.emplace_back(
+                    i, mRadioState[i].mNextFreq, mClientLatitude,
+                    mClientLongitude, mClientAltitudeMSLM, mClientAltitudeGLM);
+        }
     }
     return std::move(retSet);
 }
@@ -298,7 +300,7 @@ void Client::sendTransceiverUpdate()
             transceiverDto,
             [this, transceiverDto](http::Request *r, bool success) {
                 if (success && r->getStatusCode() == 200) {
-                    for (unsigned i = 0; i < this->mRadioState.size(); i++) {
+                    for (unsigned i = 0; i < transceiverDto.size(); i++) {
                         this->mRadioState[i].mCurrentFreq = transceiverDto[i].Frequency;
                     }
                     this->mTxUpdatePending = false;
