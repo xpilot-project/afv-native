@@ -44,6 +44,14 @@ SpeexPreprocessor::SpeexPreprocessor(std::shared_ptr<ISampleSink> upstream):
     mOutputFrame()
 {
     mPreprocessorState = speex_preprocess_state_init(frameSizeSamples, sampleRateHz);
+
+    int iarg = 1;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC, &iarg);
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_DENOISE, &iarg);
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_DEREVERB, &iarg);
+
+    iarg = 30000;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_TARGET, &iarg);
 }
 
 SpeexPreprocessor::~SpeexPreprocessor()
