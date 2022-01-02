@@ -91,6 +91,9 @@ APISession::Connect()
         case APISessionState::Disconnected:
             setState(APISessionState::Connecting);
             break;
+        case APISessionState::Running:
+            setState(APISessionState::Reconnecting);
+            break;
         default:
             break;
     }
