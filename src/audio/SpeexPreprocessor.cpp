@@ -50,8 +50,17 @@ SpeexPreprocessor::SpeexPreprocessor(std::shared_ptr<ISampleSink> upstream):
     speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_DENOISE, &iarg);
     speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_DEREVERB, &iarg);
 
-    iarg = 30000;
+    iarg = 21747;
     speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_TARGET, &iarg);
+
+    iarg = 80;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_MAX_GAIN, &iarg);
+
+    iarg = -60;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_AGC_DECREMENT, &iarg);
+
+    iarg = -30;
+    speex_preprocess_ctl(mPreprocessorState, SPEEX_PREPROCESS_SET_NOISE_SUPPRESS, &iarg);
 }
 
 SpeexPreprocessor::~SpeexPreprocessor()
