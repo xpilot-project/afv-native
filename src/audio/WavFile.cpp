@@ -40,10 +40,10 @@
 #include <vector>
 #include <algorithm>
 
-#include <QTemporaryDir>
-#include <QFile>
-#include <QString>
-#include <QtDebug>
+// #include <QTemporaryDir>
+// #include <QFile>
+// #include <QString>
+// #include <QtDebug>
 
 using namespace std;
 using namespace afv_native::audio;
@@ -350,73 +350,73 @@ fail2:
 AudioSampleData *
 afv_native::audio::LoadWav(const char *fileName)
 {
-    QTemporaryDir tempDir;
-    QFile resourcePath(fileName);
-    QFileInfo fileInfo(resourcePath);
-    QString tempFile;
+//     QTemporaryDir tempDir;
+//     QFile resourcePath(fileName);
+//     QFileInfo fileInfo(resourcePath);
+//     QString tempFile;
 
-    if(tempDir.isValid() && resourcePath.exists())
-    {
-        tempFile = tempDir.path() + "/" + fileInfo.fileName();
-        resourcePath.copy(tempFile);
-    }
+//     if(tempDir.isValid() && resourcePath.exists())
+//     {
+//         tempFile = tempDir.path() + "/" + fileInfo.fileName();
+//         resourcePath.copy(tempFile);
+//     }
 
-    FILE *fh = nullptr;
-    vector<WavTOCEntry>	toc;
-    AudioSampleData* asd = nullptr;
+//     FILE *fh = nullptr;
+//     vector<WavTOCEntry>	toc;
+//     AudioSampleData* asd = nullptr;
 
-    fh = fopen(tempFile.toStdString().c_str(), "rb");
-    if (fh == nullptr) {
-        return nullptr;
-    }
+//     fh = fopen(tempFile.toStdString().c_str(), "rb");
+//     if (fh == nullptr) {
+//         return nullptr;
+//     }
 
-    /* first of all, verify that we have an actual wavfile */
-    struct ChunkHeader ch;
+//     /* first of all, verify that we have an actual wavfile */
+//     struct ChunkHeader ch;
 
-    if (1 != fread(&ch, sizeof(ch), 1, fh)) {
-        /* short read or error */
-        goto fail;
-    }
-    /* check the top level header. */
-    if (memcmp(WavTopChunkID, ch.chunkID, 4)) {
-        goto fail;
-    }
-    /* minimum sensible size is the WAVE identifier, 2 chunk headers
-     * and the minimum legal WAVFormatChunk body
-     */
-    if (ch.chunkSize < (4+16+8+8)) {
-        goto fail;
-    }
-    /* check the WAVE magic */
-    char waveMagic[4];
-    if (1 != fread(&waveMagic, 4, 1, fh)) {
-        goto fail;
-    }
-    if (memcmp("WAVE", waveMagic, 4)) {
-        goto fail;
-    }
+//     if (1 != fread(&ch, sizeof(ch), 1, fh)) {
+//         /* short read or error */
+//         goto fail;
+//     }
+//     /* check the top level header. */
+//     if (memcmp(WavTopChunkID, ch.chunkID, 4)) {
+//         goto fail;
+//     }
+//     /* minimum sensible size is the WAVE identifier, 2 chunk headers
+//      * and the minimum legal WAVFormatChunk body
+//      */
+//     if (ch.chunkSize < (4+16+8+8)) {
+//         goto fail;
+//     }
+//     /* check the WAVE magic */
+//     char waveMagic[4];
+//     if (1 != fread(&waveMagic, 4, 1, fh)) {
+//         goto fail;
+//     }
+//     if (memcmp("WAVE", waveMagic, 4)) {
+//         goto fail;
+//     }
 
-    /* if were're still here, the file is valid so far, now we need to read
-     * scan the wave file to find the blocks we need */
-    if (!readHeader(fh, ch, toc)) {
-        goto fail;
-    }
+//     /* if were're still here, the file is valid so far, now we need to read
+//      * scan the wave file to find the blocks we need */
+//     if (!readHeader(fh, ch, toc)) {
+//         goto fail;
+//     }
 
-    asd = extractData(fh, toc);
-    if (asd == nullptr) {
-        goto fail;
-    }
+//     asd = extractData(fh, toc);
+//     if (asd == nullptr) {
+//         goto fail;
+//     }
 
-    if (fh != nullptr) {
-        fclose(fh);
-        fh = nullptr;
-    }
+//     if (fh != nullptr) {
+//         fclose(fh);
+//         fh = nullptr;
+//     }
 
-    return asd;
-fail:
-    if (fh != nullptr) {
-        fclose(fh);
-        fh = nullptr;
-    }
-    return nullptr;
+//     return asd;
+// fail:
+//     if (fh != nullptr) {
+//         fclose(fh);
+//         fh = nullptr;
+//     }
+     return nullptr;
 }
