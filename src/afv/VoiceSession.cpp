@@ -232,6 +232,8 @@ void VoiceSession::postTransceiverUpdate(
     auto &transferManager = mSession.getTransferManager();
     mTransceiverUpdateRequest.shareState(transferManager);
     mTransceiverUpdateRequest.doAsync(transferManager);
+
+    LOG("VoiceSession", "postTransceiverUpdate");
 }
 
 bool VoiceSession::isConnected() const

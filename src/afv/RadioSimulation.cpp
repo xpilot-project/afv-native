@@ -399,6 +399,7 @@ void RadioSimulation::setFrequency(unsigned int radio, unsigned int frequency)
     mRadioState[radio].Frequency = frequency;
     // reset all of the effects, except the click which should be audiable due to the Squelch-gate kicking in on the new frequency
     resetRadioFx(radio, true);
+    LOG("RadioSimulation", "setFrequency: %i: %i", radio, frequency);
 }
 
 void RadioSimulation::resetRadioFx(unsigned int radio, bool except_click)
@@ -423,6 +424,7 @@ void RadioSimulation::setGain(unsigned int radio, float gain)
 {
     std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
     mRadioState[radio].Gain = gain;
+    LOG("RadioSimulation", "setGain: %i: %f", radio, gain);
 }
 
 void RadioSimulation::setTxRadio(unsigned int radio)
@@ -432,6 +434,7 @@ void RadioSimulation::setTxRadio(unsigned int radio)
         return;
     }
     mTxRadio = radio;
+    LOG("RadioSimulation", "setTxRadio: %i", radio);
 }
 
 void RadioSimulation::dtoHandler(const std::string &dtoName, const unsigned char *bufIn, size_t bufLen, void *user_data)
