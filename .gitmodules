@@ -10,6 +10,3 @@
 [submodule "extern/portaudio"]
 	path = extern/portaudio
 	url = git@github.com:xpilot-project/portaudio.git
-[submodule "extern/chunkware-simple-dynamics"]
-	path = extern/chunkware-simple-dynamics
-	url = https://github.com/music-dsp-collection/chunkware-simple-dynamics

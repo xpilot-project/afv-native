@@ -34,7 +34,7 @@ class AfvNativeConan(ConanFile):
     requires = [
         "msgpack/3.3.0",
         "nlohmann_json/3.9.1",
-        "openssl/1.1.1m",
+        "openssl/1.1.1k",
         "libcurl/7.75.0",
         "libevent/2.1.12"
     ]

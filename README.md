@@ -16,20 +16,6 @@ $ conan install ..
 $ cmake ..
 ```
 
-## Building on macOs
-
-To build AFV-native, you will require an up-to-date copy of cmake, homebrew and conan.
-* [Conan](https://conan.io)
-* [CMake](https://cmake.org)
-* [Brew](https://brew.sh)
-
-```shell script
-$ brew install speexdsp opus portaudio
-$ mkdir build && cd build
-$ conan install ..
-$ cmake ..
-```
-
 ## Licensing
 
 AFV-Native is made available under the 3-Clause BSD License.  See `COPYING.md` for the precise licensing text.

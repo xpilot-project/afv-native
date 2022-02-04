@@ -45,7 +45,7 @@ using namespace afv_native;
 using namespace afv_native::afv;
 
 const float fxClickGain = 1.3f;
-const float fxBlockToneGain = 0.18f;
+const float fxBlockToneGain = 0.25f;
 const float fxBlockToneFreq = 180.0f;
 const float fxAcBusGain = 0.005f;
 const float fxVhfWhiteNoiseGain = 0.17f;
@@ -256,8 +256,8 @@ size_t rxIter)
 
         if (!mRadioState[rxIter].mBypassEffects) {
 
-            mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
             mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
+            mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
 
             set_radio_effects(rxIter);
             if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain))

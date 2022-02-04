@@ -46,7 +46,7 @@ extern "C" {
         //afv_native::setLogger(nullptr);
 
         ev_base = event_base_new();
-        client = std::make_unique<afv_native::Client>(ev_base, numRadios, resourcePath, clientName);
+        client = std::make_unique<afv_native::Client>(ev_base, resourcePath, numRadios, clientName);
         mAudioProviders = afv_native::audio::AudioDevice::getAPIs();
 
         keepAlive = true;

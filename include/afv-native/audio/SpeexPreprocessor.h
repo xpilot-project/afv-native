@@ -35,7 +35,7 @@
 #define AFV_NATIVE_SPEEXPREPROCESSOR_H
 
 #include <memory>
-#include <speex/speex_preprocess.h>
+#include <speexdsp/include/speex/speex_preprocess.h>
 
 #include "afv-native/audio/ISampleSink.h"
 #include "afv-native/Log.h"

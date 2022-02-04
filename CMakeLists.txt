@@ -14,7 +14,7 @@ if(MSVC)
 	endif()
 endif(MSVC)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 set(AFV_NATIVE_HEADERS
 		include/afv-native/Client.h
@@ -56,7 +56,6 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/audio/SineToneSource.h
 		include/afv-native/audio/SinkFrameSizeAdjuster.h
 		include/afv-native/audio/SourceFrameSizeAdjuster.h
-		include/afv-native/audio/SimpleCompressorEffect.h
 		include/afv-native/audio/SpeexPreprocessor.h
 		include/afv-native/audio/VHFFilterSource.h
 		include/afv-native/audio/WavFile.h
@@ -121,7 +120,6 @@ add_library(afv_native SHARED
 		src/util/base64.cpp
 		src/util/monotime.cpp
 		src/audio/PortAudioAudioDevice.cpp
-		src/audio/SimpleCompressorEffect.cpp
 		src/audio/PortAudioAudioDevice.h
 		extern/simpleSource/SimpleComp.cpp
 		extern/simpleSource/SimpleComp.h
@@ -150,46 +148,22 @@ if(WIN32)
 		
 	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/windows-speexdsp.lib)
 	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/windows-speexdsp.lib)
-
-	file(DOWNLOAD ${OPUS_URL} ${OPUS_LIBARY_PATH})
-	file(DOWNLOAD ${PORTAUDIO_URL} ${PORTAUDIO_LIBRARY_PATH})
-	file(DOWNLOAD ${SPEEXDSP_URL} ${SPEEXDSP_LIBRARY_PATH})
 endif()
 
 if(APPLE)
-	execute_process(
-			COMMAND brew --prefix opus
-			RESULT_VARIABLE BREW_OPUS
-			OUTPUT_VARIABLE BREW_OPUS_PREFIX
-			OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if (BREW_OPUS EQUAL 0 AND EXISTS "${BREW_OPUS_PREFIX}")
-        message(STATUS "Found Opus keg installed by Homebrew at ${BREW_OPUS_PREFIX}")
-        set(OPUS_LIBARY_PATH "${BREW_OPUS_PREFIX}/lib/libopus.a")
-    endif()
+	set(OPUS_URL https://github.com/xpilot-project/opus/releases/download/xpilot/macos-libopus.a)
+	set(OPUS_LIBARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libopus.a)
 
-	execute_process(
-			COMMAND brew --prefix portaudio
-			RESULT_VARIABLE BREW_PORTAUDIO
-			OUTPUT_VARIABLE BREW_PORTAUDIO_PREFIX
-			OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if (BREW_PORTAUDIO EQUAL 0 AND EXISTS "${BREW_PORTAUDIO_PREFIX}")
-        message(STATUS "Found PortAudio keg installed by Homebrew at ${BREW_PORTAUDIO_PREFIX}")
-        set(PORTAUDIO_LIBRARY_PATH "${BREW_PORTAUDIO_PREFIX}/lib/libportaudio.a")
-    endif()
+	set(PORTAUDIO_URL https://github.com/xpilot-project/portaudio/releases/download/xpilot/macos-libportaudio.a)
+	set(PORTAUDIO_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libportaudio.a)
 		
-	execute_process(
-			COMMAND brew --prefix speexdsp
-			RESULT_VARIABLE BREW_SPEEX
-			OUTPUT_VARIABLE BREW_SPEEX_PREFIX
-			OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if (BREW_SPEEX EQUAL 0 AND EXISTS "${BREW_SPEEX_PREFIX}")
-        message(STATUS "Found SpeexDSP keg installed by Homebrew at ${BREW_SPEEX_PREFIX}")
-        set(SPEEXDSP_LIBRARY_PATH "${BREW_SPEEX_PREFIX}/lib/libspeexdsp.a")
-		set(SPEEXDSP_LIBRARY_INCLUDE "${BREW_SPEEX_PREFIX}/include")
-    endif()
+	set(SPEEXDSP_URL https://github.com/xpilot-project/speexdsp/releases/download/xpilot/macos-libspeexdsp.a)
+	set(SPEEXDSP_LIBRARY_PATH ${CMAKE_BINARY_DIR}/import/macos-libspeexdsp.a)
 endif()
 
-
+file(DOWNLOAD ${OPUS_URL} ${OPUS_LIBARY_PATH})
+file(DOWNLOAD ${PORTAUDIO_URL} ${PORTAUDIO_LIBRARY_PATH})
+file(DOWNLOAD ${SPEEXDSP_URL} ${SPEEXDSP_LIBRARY_PATH})
 
 if(APPLE)
 find_library(CORE_AUDIO CoreAudio)
