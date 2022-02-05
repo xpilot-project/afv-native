@@ -561,6 +561,7 @@ void RadioSimulation::setEnableInputFilters(bool enableInputFilters)
 
 void RadioSimulation::setEnableOutputEffects(bool enableEffects)
 {
+    std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
     for (auto &thisRadio: mRadioState) {
         thisRadio.mBypassEffects = !enableEffects;
     }
@@ -568,8 +569,8 @@ void RadioSimulation::setEnableOutputEffects(bool enableEffects)
 
 void RadioSimulation::setEnableHfSquelch(bool enableSquelch)
 {
-    for (auto& thisRadio : mRadioState)
-    {
+    std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
+    for (auto& thisRadio : mRadioState) {
         thisRadio.mHfSquelch = enableSquelch;
     }
 }
