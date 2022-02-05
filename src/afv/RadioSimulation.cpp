@@ -107,7 +107,7 @@ void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
             value = 1.0f;
         }
         if(value < -1.0f) {
-            value = 1.0f;
+            value = -1.0f;
         }
         samples[i] = value;
     }
