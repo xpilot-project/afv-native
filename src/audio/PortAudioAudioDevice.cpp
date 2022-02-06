@@ -129,7 +129,7 @@ bool PortAudioAudioDevice::getDeviceForName(const string &deviceName, bool forIn
                 return true;
             }
         }
-        LOG("AudioDevice", "Couldn't find a compatible device \"%s\" - using default", deviceName.c_str());
+        LOG("AudioDevice", "Couldn't find a compatible %s device \"%s\" - using default", forInput ? "input" : "output", deviceName.c_str());
     }
     // next, try the default device...
     auto devId = Pa_HostApiDeviceIndexToDeviceIndex(
@@ -148,7 +148,8 @@ bool PortAudioAudioDevice::getDeviceForName(const string &deviceName, bool forIn
     // if the default device doesn't work, pull the first device that will.
     auto firstDev = allDevices.begin();
     if (firstDev != allDevices.end()) {
-        LOG("AudioDevice", "Default can't handle our format.  Using \"%s\" instead.", firstDev->second.name.c_str());
+        LOG("AudioDevice", "Default %s device can't handle our format.  Using \"%s\" instead.",
+            forInput ? "input" : "output", firstDev->second.name.c_str());
         deviceParamOut.device = firstDev->first;
         deviceParamOut.channelCount = 1;
         deviceParamOut.sampleFormat = paFloat32;
@@ -157,7 +158,7 @@ bool PortAudioAudioDevice::getDeviceForName(const string &deviceName, bool forIn
         deviceParamOut.hostApiSpecificStreamInfo = nullptr;
         return true;
     }
-    LOG("AudioDevice", "Couldn't map a working audio device");
+    LOG("AudioDevice", "Couldn't map a working %s audio device", forInput ? "input" : "output");
     return false;
 }
 

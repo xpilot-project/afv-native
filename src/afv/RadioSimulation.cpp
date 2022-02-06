@@ -97,9 +97,24 @@ RadioSimulation::RadioSimulation(
 
 void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
 {
+    audio::SampleType *samples = new audio::SampleType[audio::frameSizeSamples];
+    mVoiceFilter->transformFrame(samples, bufferIn);
+
+    float value = 0;
+    for(int i = 0; i < audio::frameSizeSamples; i++) {
+        value = samples[i] * mMicVolume;
+        if(value > 1.0f) {
+            value = 1.0f;
+        }
+        if(value < -1.0f) {
+            value = -1.0f;
+        }
+        samples[i] = value;
+    }
+
     // do the peak/Vu calcs
     {
-        auto *b = bufferIn;
+        auto *b = samples;
         int i = audio::frameSizeSamples - 1;
         audio::SampleType peak = fabs(*(b++));
         while (i-- > 0) {
@@ -110,16 +125,14 @@ void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
         peakDb = std::min(0.0, peakDb);
         mVuMeter.addDatum(peakDb);
     }
+
     if (!mPtt.load() && !mLastFramePtt) {
         // Tick the sequence over when we have no Ptt as the compressed endpoint wont' get called to do that.
         std::atomic_fetch_add<uint32_t>(&mTxSequence, 1);
         return;
     }
-    if (mVoiceFilter) {
-        mVoiceFilter->putAudioFrame(bufferIn);
-    } else {
-        mVoiceSink->putAudioFrame(bufferIn);
-    }
+
+    mVoiceSink->putAudioFrame(samples);
 }
 
 void RadioSimulation::processCompressedFrame(std::vector<unsigned char> compressedData)
@@ -399,6 +412,7 @@ void RadioSimulation::setFrequency(unsigned int radio, unsigned int frequency)
     mRadioState[radio].Frequency = frequency;
     // reset all of the effects, except the click which should be audiable due to the Squelch-gate kicking in on the new frequency
     resetRadioFx(radio, true);
+    LOG("RadioSimulation", "setFrequency: %i: %i", radio, frequency);
 }
 
 void RadioSimulation::resetRadioFx(unsigned int radio, bool except_click)
@@ -423,6 +437,7 @@ void RadioSimulation::setGain(unsigned int radio, float gain)
 {
     std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
     mRadioState[radio].Gain = gain;
+    LOG("RadioSimulation", "setGain: %i: %f", radio, gain);
 }
 
 void RadioSimulation::setTxRadio(unsigned int radio)
@@ -432,6 +447,12 @@ void RadioSimulation::setTxRadio(unsigned int radio)
         return;
     }
     mTxRadio = radio;
+    LOG("RadioSimulation", "setTxRadio: %i", radio);
+}
+
+void RadioSimulation::setMicrophoneVolume(float volume)
+{
+    mMicVolume = volume;
 }
 
 void RadioSimulation::dtoHandler(const std::string &dtoName, const unsigned char *bufIn, size_t bufLen, void *user_data)
@@ -540,6 +561,7 @@ void RadioSimulation::setEnableInputFilters(bool enableInputFilters)
 
 void RadioSimulation::setEnableOutputEffects(bool enableEffects)
 {
+    std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
     for (auto &thisRadio: mRadioState) {
         thisRadio.mBypassEffects = !enableEffects;
     }
@@ -547,8 +569,8 @@ void RadioSimulation::setEnableOutputEffects(bool enableEffects)
 
 void RadioSimulation::setEnableHfSquelch(bool enableSquelch)
 {
-    for (auto& thisRadio : mRadioState)
-    {
+    std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
+    for (auto& thisRadio : mRadioState) {
         thisRadio.mHfSquelch = enableSquelch;
     }
 }
