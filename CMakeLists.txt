@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(afv_native LANGUAGES CXX)
+
+set(CONAN_DISABLE_CHECK_COMPILER TRUE)
+
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
@@ -78,8 +81,8 @@ set(AFV_NATIVE_HEADERS
 		include/afv-native/util/base64.h
 		include/afv-native/util/ChainedCallback.h
 		include/afv-native/util/monotime.h
-		include/afv-native/utility.h
-		)
+		include/afv-native/utility.h)
+
 add_library(afv_native SHARED
 		${AFV_NATIVE_HEADERS}
 		src/afv/APISession.cpp
@@ -119,8 +122,9 @@ add_library(afv_native SHARED
 		src/http/RESTRequest.cpp
 		src/util/base64.cpp
 		src/util/monotime.cpp
-		src/audio/PortAudioAudioDevice.cpp
-		src/audio/PortAudioAudioDevice.h
+		src/audio/miniaudio.h
+		src/audio/MiniAudioDevice.cpp
+		src/audio/MiniAudioDevice.h
 		extern/simpleSource/SimpleComp.cpp
 		extern/simpleSource/SimpleComp.h
 		extern/simpleSource/SimpleEnvelope.cpp

@@ -243,11 +243,7 @@ void Client::startAudio()
 {
     if (!mAudioDevice) {
         LOG("afv::Client", "Initialising Audio...");
-        mAudioDevice = audio::AudioDevice::makeDevice(
-                mClientName,
-                mAudioOutputDeviceName,
-                mAudioInputDeviceName,
-                mAudioApi);
+        mAudioDevice = audio::AudioDevice::makeDevice(mAudioOutputDeviceName, mAudioInputDeviceName);
     } else {
         LOG("afv::Client", "Tried to recreate audio device...");
     }

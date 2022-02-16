@@ -40,9 +40,11 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <list>
 
 #include "afv-native/audio/ISampleSink.h"
 #include "afv-native/audio/ISampleSource.h"
+#include "afv-native/src/audio/miniaudio.h"
 
 namespace afv_native {
     namespace audio {
@@ -133,14 +135,9 @@ namespace afv_native {
             std::atomic<uint32_t>   InputOverflows;
 
             /* default implementation hooks... */
-            static std::map<Api,std::string> getAPIs();
-            static std::map<int,DeviceInfo> getCompatibleInputDevicesForApi(AudioDevice::Api api);
-            static std::map<int,DeviceInfo> getCompatibleOutputDevicesForApi(AudioDevice::Api api);
-            static std::shared_ptr<AudioDevice> makeDevice(
-                    const std::string &userStreamName,
-                    const std::string &outputDeviceId,
-                    const std::string &inputDeviceId,
-                    Api audioApi=-1);
+            static std::list<ma_device_info*> getCompatibleInputDevices();
+            static std::list<ma_device_info*> getCompatibleOutputDevices();
+            static std::shared_ptr<AudioDevice> makeDevice(const std::string& outputDevice, const std::string& inputDevice);
         };
     }
 }
