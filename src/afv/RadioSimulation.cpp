@@ -50,6 +50,8 @@ const float fxBlockToneFreq = 180.0f;
 const float fxAcBusGain = 0.005f;
 const float fxVhfWhiteNoiseGain = 0.17f;
 const float fxHfWhiteNoiseGain = 0.16f;
+const double minDb = -40.0;
+const double maxDb = 0.0;
 
 CallsignMeta::CallsignMeta():
     source(),
@@ -97,7 +99,7 @@ RadioSimulation::RadioSimulation(
 
 void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
 {
-    audio::SampleType *samples = new audio::SampleType[audio::frameSizeSamples];
+    audio::SampleType samples[audio::frameSizeSamples];
     mVoiceFilter->transformFrame(samples, bufferIn);
 
     float value = 0;
@@ -121,9 +123,14 @@ void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
             peak = std::max<audio::SampleType>(peak, fabs(*(b++)));
         }
         double peakDb = 20.0 * log10(peak);
-        peakDb = std::max(-40.0, peakDb);
-        peakDb = std::min(0.0, peakDb);
-        mVuMeter.addDatum(peakDb);
+        peakDb = std::max(minDb, peakDb);
+        peakDb = std::min(maxDb, peakDb);
+        double ratio = (peakDb - minDb) / (maxDb - minDb);
+        if(ratio < 0.30)
+            ratio = 0;
+        if(ratio > 1.0)
+            ratio = 1;
+        mVuMeter.addDatum(ratio);
     }
 
     if (!mPtt.load() && !mLastFramePtt) {
@@ -269,8 +276,18 @@ size_t rxIter)
 
         if (!mRadioState[rxIter].mBypassEffects) {
 
-            mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
             mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
+
+            // limiter effect
+            for(unsigned int i = 0; i < audio::frameSizeSamples; i++)
+            {
+                if(mChannelBuffer[i] > 1.0f)
+                    mChannelBuffer[i] = 1.0f;
+                if(mChannelBuffer[i] < -1.0f)
+                    mChannelBuffer[i] = -1.0f;
+            }
+
+            mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
 
             set_radio_effects(rxIter);
             if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain))
