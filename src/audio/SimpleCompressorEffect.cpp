@@ -1,32 +1,34 @@
 #include "afv-native/audio/SimpleCompressorEffect.h"
-#include <SimpleComp.h>
 
 using namespace afv_native::audio;
 
-SimpleCompressorEffect::SimpleCompressorEffect() :
-    m_simpleCompressor(new chunkware_simple::SimpleComp())
+SimpleCompressorEffect::SimpleCompressorEffect()
 {
-    m_simpleCompressor->setAttack(5.0);
-    m_simpleCompressor->setRelease(10.0);
-    m_simpleCompressor->setSampleRate(sampleRateHz);
-    m_simpleCompressor->setThresh(16.0);
-    m_simpleCompressor->setRatio(6.0);
-    m_simpleCompressor->setMakeUpGain(-5.5);
-    m_simpleCompressor->initRuntime();
+    sf_defaultcomp(&m_simpleCompressor, sampleRateHz);
 }
 
 SimpleCompressorEffect::~SimpleCompressorEffect()
 {
-    delete m_simpleCompressor;
+
 }
 
 void SimpleCompressorEffect::transformFrame(SampleType *bufferOut, const SampleType bufferIn[])
 {
+    sf_snd output_snd = sf_snd_new(frameSizeSamples, sampleRateHz, true);
+    sf_snd input_snd = sf_snd_new(frameSizeSamples, sampleRateHz, true);
+
     for(int i = 0; i < frameSizeSamples; i++)
     {
-        double in1 = bufferIn[i];
-        double in2 = in1;
-        m_simpleCompressor->process(in1, in2);
-        bufferOut[i] = static_cast<SampleType>(in1);
+        input_snd->samples[i].L = bufferIn[i];
     }
+
+    sf_compressor_process(&m_simpleCompressor, frameSizeSamples, input_snd->samples, output_snd->samples);
+
+    for(int i = 0; i < frameSizeSamples; i++)
+    {
+        bufferOut[i] = static_cast<SampleType>(output_snd->samples[i].L);
+    }
+
+    sf_snd_free(input_snd);
+    sf_snd_free(output_snd);
 }
