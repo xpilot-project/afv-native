@@ -16,7 +16,7 @@ void sf_defaultcomp(sf_compressor_state_st *state, int rate){
     // sane defaults
     sf_advancecomp(state, rate,
           0.000f, // pregain
-        -24.000f, // threshold
+        -30.000f, // threshold
          30.000f, // knee
          12.000f, // ratio
           0.003f, // attack
