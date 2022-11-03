@@ -48,7 +48,9 @@ namespace afv_native {
         StationAliasesUpdated,
         AudioError,
         RxStarted,
-        RxStopped
+        RxStopped,
+        InputDeviceError,
+        AudioDisabled
     };
 }
 

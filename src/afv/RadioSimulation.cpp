@@ -276,8 +276,6 @@ size_t rxIter)
 
         if (!mRadioState[rxIter].mBypassEffects) {
 
-            mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
-
             // limiter effect
             for(unsigned int i = 0; i < audio::frameSizeSamples; i++)
             {
@@ -288,6 +286,7 @@ size_t rxIter)
             }
 
             mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
+            mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
 
             set_radio_effects(rxIter);
             if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain))
