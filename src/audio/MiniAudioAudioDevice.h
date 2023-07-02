@@ -2,6 +2,7 @@
 #define MINIAUDIO_DEVICE_H
 
 #define MINIAUDIO_IMPLEMENTATION
+#define MA_COINIT_VALUE COINIT_APARTMENTTHREADED
 #define MA_NO_WEBAUDIO
 #define MA_NO_NULL
 #include "miniaudio.h"
