@@ -159,7 +159,8 @@ namespace afv_native {
         void setAudioApi(audio::AudioDevice::Api api);
 
         void setAudioInputDevice(std::string inputDevice);
-        void setAudioOutputDevice(std::string outputDevice);
+        void setSpeakerDevice(std::string speakerDevice);
+        void setHeadsetDevice(std::string headsetDevice);
 
         /** isAPIConnected() indicates if the API Server connection is up.
          *
@@ -193,6 +194,9 @@ namespace afv_native {
         void setEnableOutputEffects(bool enableEffects);
         void setEnableHfSquelch(bool enableSquelch);
 
+        void setOnHeadset(unsigned int radio, bool onHeadset);
+        void setSplitAudioChannels(bool split);
+
         /** ClientEventCallback provides notifications when certain client events occur.  These can be used to
          * provide feedback within the client itself without needing to poll Client's methods.
          *
@@ -202,7 +206,7 @@ namespace afv_native {
          * The second argument is a pointer to data relevant to the callback.  The memory it points to is only
          * guaranteed to be available for the duration of the callback.
          */
-        util::ChainedCallback<void(ClientEventType,void*)>  ClientEventCallback;
+        util::ChainedCallback<void(ClientEventType, void*, void*)>  ClientEventCallback;
 
         /** getStationAliases returns a vector of all the known station aliases.
          *
@@ -216,13 +220,9 @@ namespace afv_native {
         void startAudio();
         void stopAudio();
 
-        /** logAudioStatistics dumps the internal data about over/underflow totals to the AFV log.
-         *
-         */
-        void logAudioStatistics();
-
         std::shared_ptr<const afv::RadioSimulation> getRadioSimulation() const;
-        std::shared_ptr<const audio::AudioDevice> getAudioDevice() const;
+        std::shared_ptr<const audio::AudioDevice> getHeadsetDevice() const;
+        std::shared_ptr<const audio::AudioDevice> getSpeakerDevice() const;
 
         /** getRxActive returns if the nominated radio is currently Receiving voice, irrespective as to if it's audiable
          * or not.
@@ -252,7 +252,9 @@ namespace afv_native {
         afv::APISession mAPISession;
         afv::VoiceSession mVoiceSession;
         std::shared_ptr<afv::RadioSimulation> mRadioSim;
-        std::shared_ptr<audio::AudioDevice> mAudioDevice;
+
+        std::shared_ptr<audio::AudioDevice> mHeadsetDevice;
+        std::shared_ptr<audio::AudioDevice> mSpeakerDevice;
 
         double mClientLatitude;
         double mClientLongitude;
@@ -289,7 +291,9 @@ namespace afv_native {
         std::string mClientName;
         audio::AudioDevice::Api mAudioApi;
         std::string mAudioInputDeviceName;
-        std::string mAudioOutputDeviceName;
+        std::string mHeadsetDeviceName;
+        std::string mSpeakerDeviceName;
+        bool mSplitAudioChannels;
     public:
     };
 }

@@ -53,7 +53,8 @@ Client::Client(
         mAPISession(mEvBase, mTransferManager, std::move(baseUrl), clientName),
         mVoiceSession(mAPISession),
         mRadioSim(std::make_shared<afv::RadioSimulation>(mEvBase, mFxRes, &mVoiceSession.getUDPChannel(), numRadios)),
-        mAudioDevice(),
+        mSpeakerDevice(),
+        mHeadsetDevice(),
         mClientLatitude(0.0),
         mClientLongitude(0.0),
         mClientAltitudeMSLM(0.0),
@@ -67,7 +68,9 @@ Client::Client(
         mClientName(clientName),
         mAudioApi(0),
         mAudioInputDeviceName(),
-        mAudioOutputDeviceName(),
+        mSpeakerDeviceName(),
+        mHeadsetDeviceName(),
+        mSplitAudioChannels(false),
         ClientEventCallback()
 {
     mAPISession.StateCallback.addCallback(this, std::bind(&Client::sessionStateCallback, this, std::placeholders::_1));
@@ -78,6 +81,7 @@ Client::Client(
     for (size_t i = 0; i < mRadioState.size(); i++) {
         mRadioSim->setFrequency(i, mRadioState[i].mNextFreq);
     }
+    mRadioSim->setupDevices(&ClientEventCallback);
 }
 
 Client::~Client()
@@ -174,7 +178,7 @@ void Client::voiceStateCallback(afv::VoiceSessionState state)
         LOG("afv::Client", "Voice Session Connected");
         startAudio();
         queueTransceiverUpdate();
-        ClientEventCallback.invokeAll(ClientEventType::VoiceServerConnected, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::VoiceServerConnected, nullptr, nullptr);
         break;
     case afv::VoiceSessionState::Disconnected:
         LOG("afv::Client", "Voice Session Disconnected");
@@ -183,7 +187,7 @@ void Client::voiceStateCallback(afv::VoiceSessionState state)
         // bring down the API session too.
         mAPISession.Disconnect();
         mRadioSim->reset();
-        ClientEventCallback.invokeAll(ClientEventType::VoiceServerDisconnected, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::VoiceServerDisconnected, nullptr, nullptr);
         break;
     case afv::VoiceSessionState::Error:
         LOG("afv::Client", "got error from voice session");
@@ -195,9 +199,9 @@ void Client::voiceStateCallback(afv::VoiceSessionState state)
         voiceError = mVoiceSession.getLastError();
         if (voiceError == afv::VoiceSessionError::UDPChannelError) {
             channelErrno = mVoiceSession.getUDPChannel().getLastErrno();
-            ClientEventCallback.invokeAll(ClientEventType::VoiceServerChannelError, &channelErrno);
+            ClientEventCallback.invokeAll(ClientEventType::VoiceServerChannelError, &channelErrno, nullptr);
         } else {
-            ClientEventCallback.invokeAll(ClientEventType::VoiceServerError, &voiceError);
+            ClientEventCallback.invokeAll(ClientEventType::VoiceServerError, &voiceError, nullptr);
         }
         break;
     }
@@ -217,18 +221,18 @@ void Client::sessionStateCallback(afv::APISessionState state)
             mVoiceSession.Connect();
             mAPISession.updateStationAliases();
         }
-        ClientEventCallback.invokeAll(ClientEventType::APIServerConnected, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::APIServerConnected, nullptr, nullptr);
         break;
     case afv::APISessionState::Disconnected:
         LOG("afv_native::Client", "Disconnected from AFV API Server.  Terminating sessions");
         // because we only ever commence a normal API Session teardown from a voicesession hook,
         // we don't need to call into voiceSession in this case only.
-        ClientEventCallback.invokeAll(ClientEventType::APIServerDisconnected, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::APIServerDisconnected, nullptr, nullptr);
         break;
     case afv::APISessionState::Error:
         LOG("afv_native::Client", "Got error from AFV API Server.  Disconnecting session");
         sessionError = mAPISession.getLastError();
-        ClientEventCallback.invokeAll(ClientEventType::APIServerError, &sessionError);
+        ClientEventCallback.invokeAll(ClientEventType::APIServerError, &sessionError, nullptr);
         break;
     default:
         // ignore the other transitions.
@@ -238,38 +242,80 @@ void Client::sessionStateCallback(afv::APISessionState state)
 
 void Client::startAudio()
 {
-    if (!mAudioDevice) {
-        LOG("afv::Client", "Initialising Audio...");
-        mAudioDevice = audio::AudioDevice::makeDevice(
-                mClientName,
-                mAudioOutputDeviceName,
+    if (!mSpeakerDevice) {
+        LOG("afv::Client", "Initializing speaker audio device...");
+        mSpeakerDevice = audio::AudioDevice::makeDevice(
+                "afv::speaker",
+                mSpeakerDeviceName,
                 mAudioInputDeviceName,
-                mAudioApi);
-    } else {
-        LOG("afv::Client", "Tried to recreate audio device...");
-    }
+                mAudioApi,
+                mSplitAudioChannels);
 
-    mAudioDevice->setSink(mRadioSim);
-    mAudioDevice->setSource(mRadioSim);
-
-    if (mAudioDevice->openOutput()) {
-        if (!mAudioDevice->openInput()) {
-            LOG("afv::Client", "Couldn't initialize microphone device");
-            ClientEventCallback.invokeAll(ClientEventType::InputDeviceError, nullptr);
+        if(!mSpeakerDevice) {
+            LOG("afv::Client", "Could not initiate speaker device context.");
+            ClientEventCallback.invokeAll(ClientEventType::AudioError, nullptr, nullptr);
         }
     }
     else {
-        LOG("afv::Client", "Couldn't initialize listening device");
-        ClientEventCallback.invokeAll(ClientEventType::AudioDisabled, nullptr);
+        LOG("afv::Client", "Speaker device already exists, skipping creation.");
+    }
+
+    if(mSpeakerDevice->openOutput()) {
+        mSpeakerDevice->setSink(nullptr);
+        mSpeakerDevice->setSource(mRadioSim->speakerDevice());
+    }
+    else {
+        LOG("afv::Client", "Unable to open Speaker audio device.");
         stopAudio();
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, nullptr, nullptr);
+        return;
+    }
+
+    if(!mHeadsetDevice) {
+        LOG("afv::Client", "Initializing headset audio device...");
+        mHeadsetDevice = audio::AudioDevice::makeDevice(
+            "afv::headset",
+            mHeadsetDeviceName,
+            mAudioInputDeviceName,
+            mAudioApi,
+            mSplitAudioChannels);
+
+        if(!mHeadsetDevice) {
+            LOG("afv::Client", "Could not initiate headset device context.");
+            ClientEventCallback.invokeAll(ClientEventType::AudioError, nullptr, nullptr);
+        }
+    }
+    else{
+       LOG("afv::Client", "Headset device already exists, skipping creation.");
+    }
+
+    if(mHeadsetDevice->openOutput()) {
+       if(mHeadsetDevice->openInput()) {
+            mHeadsetDevice->setSink(mRadioSim);
+            mHeadsetDevice->setSource(mRadioSim->headsetDevice());
+       }
+       else {
+            LOG("afv::Client", "Could not initialize microphone device.");
+            ClientEventCallback.invokeAll(ClientEventType::InputDeviceError, nullptr, nullptr);
+       }
+    }
+    else {
+       LOG("afv::Client", "Error initializing headset device. Audio disabled.");
+       ClientEventCallback.invokeAll(ClientEventType::AudioDisabled, nullptr, nullptr);
+       stopAudio();
     }
 }
 
 void Client::stopAudio()
 {
-    if (mAudioDevice) {
-        mAudioDevice->close();
-        mAudioDevice.reset();
+    if (mSpeakerDevice) {
+        mSpeakerDevice->close();
+        mSpeakerDevice.reset();
+    }
+
+    if(mHeadsetDevice) {
+        mHeadsetDevice->close();
+        mHeadsetDevice.reset();
     }
 }
 
@@ -335,7 +381,7 @@ void Client::unguardPtt()
         LOG("Client", "Freqs in sync - allowing PTT now.");
         mPtt = true;
         mRadioSim->setPtt(true);
-        ClientEventCallback.invokeAll(ClientEventType::PttOpen, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::PttOpen, nullptr, nullptr);
     }
 }
 
@@ -362,10 +408,10 @@ void Client::setPtt(bool pttState)
     mRadioSim->setPtt(mPtt);
     if (mPtt) {
         LOG("Client", "Opened PTT");
-        ClientEventCallback.invokeAll(ClientEventType::PttOpen, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::PttOpen, nullptr, nullptr);
     } else if (!mWantPtt) {
         LOG("Client", "Closed PTT");
-        ClientEventCallback.invokeAll(ClientEventType::PttClosed, nullptr);
+        ClientEventCallback.invokeAll(ClientEventType::PttClosed, nullptr, nullptr);
     }
 }
 
@@ -384,9 +430,12 @@ void Client::setAudioInputDevice(std::string inputDevice)
     mAudioInputDeviceName = inputDevice;
 }
 
-void Client::setAudioOutputDevice(std::string outputDevice)
-{
-    mAudioOutputDeviceName = outputDevice;
+void Client::setSpeakerDevice(std::string speakerDevice) {
+    mSpeakerDeviceName = speakerDevice;
+}
+
+void Client::setHeadsetDevice(std::string headsetDevice) {
+    mHeadsetDeviceName = headsetDevice;
 }
 
 bool Client::isAPIConnected() const
@@ -464,9 +513,20 @@ void Client::setEnableHfSquelch(bool enableSquelch)
     mRadioSim->setEnableHfSquelch(enableSquelch);
 }
 
+void Client::setOnHeadset(unsigned int radio, bool onHeadset)
+{
+    mRadioSim->setOnHeadset(radio, onHeadset);
+}
+
+void Client::setSplitAudioChannels(bool split)
+{
+    mSplitAudioChannels = split;
+    mRadioSim->setSplitAudioChannels(split);
+}
+
 void Client::aliasUpdateCallback()
 {
-    ClientEventCallback.invokeAll(ClientEventType::StationAliasesUpdated, nullptr);
+    ClientEventCallback.invokeAll(ClientEventType::StationAliasesUpdated, nullptr, nullptr);
 }
 
 std::vector<afv::dto::Station> Client::getStationAliases() const
@@ -474,19 +534,16 @@ std::vector<afv::dto::Station> Client::getStationAliases() const
     return std::move(mAPISession.getStationAliases());
 }
 
-void Client::logAudioStatistics() {
-    if (mAudioDevice) {
-        LOG("Client", "Output Buffer Underflows: %d", mAudioDevice->OutputUnderflows.load());
-        LOG("Client", "Input Buffer Overflows: %d", mAudioDevice->InputOverflows.load());
-    }
-}
-
 std::shared_ptr<const afv::RadioSimulation> Client::getRadioSimulation() const {
     return mRadioSim;
 }
 
-std::shared_ptr<const audio::AudioDevice> Client::getAudioDevice() const {
-    return mAudioDevice;
+std::shared_ptr<const audio::AudioDevice> Client::getHeadsetDevice() const {
+    return mHeadsetDevice;
+}
+
+std::shared_ptr<const audio::AudioDevice> Client::getSpeakerDevice() const {
+    return mSpeakerDevice;
 }
 
 bool Client::getRxActive(unsigned int radioNumber) {

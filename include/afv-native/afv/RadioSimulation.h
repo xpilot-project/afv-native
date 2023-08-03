@@ -38,6 +38,7 @@
 #include <unordered_map>
 
 #include "afv-native/utility.h"
+#include "afv-native/event.h"
 #include "afv-native/afv/EffectResources.h"
 #include "afv-native/afv/RemoteVoiceSource.h"
 #include "afv-native/afv/RollingAverage.h"
@@ -45,8 +46,6 @@
 #include "afv-native/afv/dto/voice_server/AudioRxOnTransceivers.h"
 #include "afv-native/audio/ISampleSink.h"
 #include "afv-native/audio/ISampleSource.h"
-#include "afv-native/audio/OutputMixer.h"
-#include "afv-native/audio/PinkNoiseGenerator.h"
 #include "afv-native/audio/SineToneSource.h"
 #include "afv-native/audio/SpeexPreprocessor.h"
 #include "afv-native/audio/SimpleCompressorEffect.h"
@@ -58,6 +57,28 @@
 namespace afv_native {
     namespace afv {
 
+        class RadioSimulation;
+
+        class OutputAudioDevice : public audio::ISampleSource {
+        public:
+            OutputAudioDevice(std::weak_ptr<RadioSimulation> radio, bool onHeadset);
+            audio::SourceStatus getAudioFrame(audio::SampleType *bufferOut) override;
+        private:
+            std::weak_ptr<RadioSimulation> mRadio;
+            bool onHeadset = false;
+        };
+
+        class OutputDeviceState {
+        public:
+            audio::SampleType *mChannelBuffer;
+            audio::SampleType *mMixingBuffer; // for single channel mode
+            audio::SampleType *mLeftMixingBuffer;
+            audio::SampleType *mRightMixingBuffer;
+            audio::SampleType *mFetchBuffer;
+            OutputDeviceState();
+            virtual ~OutputDeviceState();
+        };
+
         /** RadioState is the internal state object for each radio within a RadioSimulation.
          *
          * It tracks the current playback position of the mixing effects, the channel frequency and gain.
@@ -65,7 +86,7 @@ namespace afv_native {
         class RadioState {
         public:
             unsigned int Frequency;
-            float Gain;
+            float Gain = 1.0;
             std::shared_ptr<audio::RecordedSampleSource> Click;
             std::shared_ptr<audio::RecordedSampleSource> Crackle;
             std::shared_ptr<audio::RecordedSampleSource> AcBus;
@@ -78,6 +99,7 @@ namespace afv_native {
             bool mBypassEffects;
             bool mHfSquelch;
             bool mIsReceiving;
+            bool onHeadset = true;
         };
 
         /** CallsignMeta is the per-packetstream metadata stored within the RadioSimulation object.
@@ -108,7 +130,7 @@ namespace afv_native {
          * packets.
          */
         class RadioSimulation:
-                public audio::ISampleSource,
+                public std::enable_shared_from_this<RadioSimulation>,
                 public audio::ISampleSink,
                 public ICompressedFrameSink {
         public:
@@ -147,19 +169,22 @@ namespace afv_native {
             void setEnableOutputEffects(bool enableEffects);
             void setEnableHfSquelch(bool enableHfSquelch);
 
+            void setupDevices(util::ChainedCallback<void(ClientEventType, void*, void*)> *eventCallback);
+
+            void setOnHeadset(unsigned int radio, bool onHeadset);
+            void setSplitAudioChannels(bool splitChannels);
+
             void putAudioFrame(const audio::SampleType *bufferIn) override;
-            audio::SourceStatus getAudioFrame(audio::SampleType *bufferOut) override;
+            audio::SourceStatus getAudioFrame(audio::SampleType *bufferOut, bool onHeadset);
 
             /** Contains the number of IncomingAudioStreams known to the simulation stack */
             std::atomic<uint32_t> IncomingAudioStreams;
 
-            /** Contains the number of IncomingAudioStreams playing currently.  Allocated using
-             * new to ensure that it cannot be resized or relocated.
-             */
-            std::atomic<uint32_t> *AudiableAudioStreams;
-
             int lastReceivedRadio() const;
             util::ChainedCallback<void(RadioSimulationState)>  RadioStateCallback;
+
+            std::shared_ptr<audio::ISampleSource> speakerDevice() { return mSpeakerDevice; }
+            std::shared_ptr<audio::ISampleSource> headsetDevice() { return mHeadsetDevice; }
 
         protected:
             /** maintenanceTimerIntervalMs is the internal in milliseconds between periodic cleanups
@@ -173,13 +198,16 @@ namespace afv_native {
              */
             static const int maintenanceTimerIntervalMs = 30 * 1000; /* every 30s */
 
+            util::ChainedCallback<void(ClientEventType, void*, void*)>  *ClientEventCallback;
+
             struct event_base *mEvBase;
             std::shared_ptr<EffectResources> mResources;
             cryptodto::UDPChannel *mChannel;
             std::string mCallsign;
 
             std::mutex mStreamMapLock;
-            std::unordered_map<std::string, struct CallsignMeta> mIncomingStreams;
+            std::unordered_map<std::string, struct CallsignMeta> mHeadsetIncomingStreams;
+            std::unordered_map<std::string, struct CallsignMeta> mSpeakerIncomingStreams;
 
             std::mutex mRadioStateLock;
             std::atomic<bool> mPtt;
@@ -188,21 +216,17 @@ namespace afv_native {
             std::atomic<uint32_t> mTxSequence;
             std::vector<RadioState> mRadioState;
 
+            bool mSplitChannels = false;
+
+            std::shared_ptr<OutputAudioDevice> mHeadsetDevice;
+            std::shared_ptr<OutputAudioDevice> mSpeakerDevice;
+
+            std::shared_ptr<OutputDeviceState> mHeadsetState;
+            std::shared_ptr<OutputDeviceState> mSpeakerState;
+
             float mMicVolume = 1.0f;
 
             unsigned int mLastReceivedRadio;
-
-            /** mChannelBuffer is our single-radio/channel workbuffer - we do our per-channel fx mixing in here before
-             * we mix into the mMixingBuffer
-            */
-            audio::SampleType *mChannelBuffer;
-
-            /** mMixingBuffer is our aggregated mixing buffer for all radios/channels - when we're finished mixing and
-             * the final effects pass, we copy this to the output/target buffer.
-             */
-            audio::SampleType *mMixingBuffer;
-
-            audio::SampleType *mFetchBuffer;
 
             std::shared_ptr<VoiceCompressionSink> mVoiceSink;
             std::shared_ptr<audio::SpeexPreprocessor> mVoiceFilter;
@@ -214,7 +238,7 @@ namespace afv_native {
 
             void set_radio_effects(size_t rxIter);
 
-            bool mix_effect(std::shared_ptr<audio::ISampleSource> effect, float gain);
+            bool mix_effect(std::shared_ptr<audio::ISampleSource> effect, float gain, std::shared_ptr<OutputDeviceState> state);
 
             void processCompressedFrame(std::vector<unsigned char> compressedData) override;
 
@@ -227,8 +251,15 @@ namespace afv_native {
         private:
             bool _process_radio(
                     const std::map<void *, audio::SampleType[audio::frameSizeSamples]> &sampleCache,
-                    std::map<void *, audio::SampleType[audio::frameSizeSamples]> &eqSampleCache,
-                    size_t rxIter);
+                    size_t rxIter,
+                    bool onHeadset);
+
+            inline void interleave(audio::SampleType* leftChannel, audio::SampleType* rightChannel, audio::SampleType* outputBuffer, size_t numSamples) {
+                for (size_t i = 0; i < numSamples; i++) {
+                    outputBuffer[2 * i] = leftChannel[i]; // Interleave left channel data
+                    outputBuffer[2 * i + 1] = rightChannel[i]; // Interleave right channel data
+                }
+            }
 
             /** mix_buffers is a utility function that mixes two buffers of audio together.  The src_dst
              * buffer is assumed to be the final output buffer and is modified by the mixing in place.
