@@ -49,8 +49,6 @@ namespace afv_native {
         AudioError,
         RxStarted,
         RxStopped,
-        InputDeviceError,
-        AudioDisabled
     };
 }
 

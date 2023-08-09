@@ -294,6 +294,7 @@ namespace afv_native {
         std::string mHeadsetDeviceName;
         std::string mSpeakerDeviceName;
         bool mSplitAudioChannels;
+        bool mInvalidDeviceConfig = false;
     public:
     };
 }
