@@ -1,5 +1,6 @@
 #include "MiniAudioAudioDevice.h"
 
+#include <algorithm>
 #include <memory>
 #include <cstring>
 
