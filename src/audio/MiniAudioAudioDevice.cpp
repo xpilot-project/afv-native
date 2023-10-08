@@ -1,6 +1,6 @@
 #include "MiniAudioAudioDevice.h"
 
-#include <QDebug>
+#include <algorithm>
 #include <memory>
 #include <cstring>
 
@@ -19,13 +19,15 @@ MiniAudioAudioDevice::MiniAudioAudioDevice(
         const std::string& userStreamName,
         const std::string& outputDeviceName,
         const std::string& inputDeviceName,
-        AudioDevice::Api audioApi) :
+        AudioDevice::Api audioApi,
+        bool splitChannels) :
     AudioDevice(),
     mUserStreamName(userStreamName),
     mOutputDeviceName(outputDeviceName),
     mInputDeviceName(inputDeviceName),
     mInputInitialized(false),
-    mOutputInitialized(false)
+    mOutputInitialized(false),
+    mSplitChannels(splitChannels)
 {
     ma_context_config contextConfig = ma_context_config_init();
     contextConfig.threadPriority = ma_thread_priority_normal;
@@ -199,7 +201,7 @@ bool MiniAudioAudioDevice::initOutput()
     ma_device_config cfg = ma_device_config_init(ma_device_type_playback);
     cfg.playback.pDeviceID = &outputDeviceId;
     cfg.playback.format = ma_format_f32;
-    cfg.playback.channels = 1;
+    cfg.playback.channels = mSplitChannels ? 2 : 1;
     cfg.playback.shareMode = ma_share_mode_shared;
     cfg.sampleRate = sampleRateHz;
     cfg.periodSizeInFrames = frameSizeSamples;
@@ -359,7 +361,8 @@ AudioDevice::makeDevice(
         const std::string &userStreamName,
         const std::string &outputDeviceId,
         const std::string &inputDeviceId,
-        AudioDevice::Api audioApi) {
-    auto devsp = std::make_shared<MiniAudioAudioDevice>(userStreamName, outputDeviceId, inputDeviceId, audioApi);
+        AudioDevice::Api audioApi,
+        bool splitChannels) {
+    auto devsp = std::make_shared<MiniAudioAudioDevice>(userStreamName, outputDeviceId, inputDeviceId, audioApi, splitChannels);
     return devsp;
 }

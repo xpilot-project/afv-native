@@ -34,6 +34,7 @@
 
 #include <cmath>
 #include <atomic>
+#include <iostream>
 
 #include "afv-native/Log.h"
 #include "afv-native/afv/RadioSimulation.h"
@@ -60,41 +61,66 @@ CallsignMeta::CallsignMeta():
     source = std::make_shared<RemoteVoiceSource>();
 }
 
+OutputAudioDevice::OutputAudioDevice(std::weak_ptr<RadioSimulation> radio, bool onHeadset) :
+    mRadio(radio),
+    onHeadset(onHeadset)
+{
+
+}
+
+audio::SourceStatus OutputAudioDevice::getAudioFrame(audio::SampleType *bufferOut)
+{
+    return mRadio.lock()->getAudioFrame(bufferOut, onHeadset);
+}
+
+OutputDeviceState::OutputDeviceState()
+{
+    mChannelBuffer = new audio::SampleType[audio::frameSizeSamples];
+    mMixingBuffer = new audio::SampleType[audio::frameSizeSamples];
+    mLeftMixingBuffer = new audio::SampleType[audio::frameSizeSamples];
+    mRightMixingBuffer = new audio::SampleType[audio::frameSizeSamples];
+    mFetchBuffer = new audio::SampleType[audio::frameSizeSamples];
+}
+
+OutputDeviceState::~OutputDeviceState()
+{
+    delete[] mFetchBuffer;
+    delete[] mMixingBuffer;
+    delete[] mLeftMixingBuffer;
+    delete[] mRightMixingBuffer;
+    delete[] mChannelBuffer;
+}
+
 RadioSimulation::RadioSimulation(
         struct event_base *evBase,
         std::shared_ptr<EffectResources> resources,
         cryptodto::UDPChannel *channel,
         unsigned int radioCount):
     IncomingAudioStreams(0),
-    AudiableAudioStreams(nullptr),
     mEvBase(evBase),
     mResources(std::move(resources)),
     mChannel(),
     mStreamMapLock(),
-    mIncomingStreams(),
+    mHeadsetIncomingStreams(),
+    mSpeakerIncomingStreams(),
     mRadioStateLock(),
     mPtt(false),
     mLastFramePtt(false),
     mTxRadio(0),
     mTxSequence(0),
     mRadioState(radioCount),
-    mChannelBuffer(nullptr),
-    mMixingBuffer(nullptr),
-    mFetchBuffer(nullptr),
     mVoiceSink(std::make_shared<VoiceCompressionSink>(*this)),
     mVoiceFilter(),
     mMaintenanceTimer(mEvBase, std::bind(&RadioSimulation::maintainIncomingStreams, this)),
     mVuMeter(300 / audio::frameLengthMs) // VU is a 300ms zero to peak response...
 {
-    mChannelBuffer = new audio::SampleType[audio::frameSizeSamples];
-    mMixingBuffer = new audio::SampleType[audio::frameSizeSamples];
-    mFetchBuffer = new audio::SampleType[audio::frameSizeSamples];
     setUDPChannel(channel);
     mMaintenanceTimer.enable(maintenanceTimerIntervalMs);
-    AudiableAudioStreams = new std::atomic<uint32_t>[radioCount];
-    for (int i = 0; i < radioCount; i++) {
-        AudiableAudioStreams[i].store(0);
-    }
+}
+
+RadioSimulation::~RadioSimulation()
+{
+
 }
 
 void RadioSimulation::putAudioFrame(const audio::SampleType *bufferIn)
@@ -197,16 +223,17 @@ freqIsHF(unsigned int freq)
 }
 
 bool RadioSimulation::_process_radio(
-        const std::map<void *, audio::SampleType[audio::frameSizeSamples]> &sampleCache,
-std::map<void *, audio::SampleType[audio::frameSizeSamples]> &eqSampleCache,
-size_t rxIter)
+    const std::map<void *, audio::SampleType[audio::frameSizeSamples]> &sampleCache,
+    size_t rxIter,
+    bool onHeadset)
 {
-    ::memset(mChannelBuffer, 0, audio::frameSizeBytes);
+    std::shared_ptr<OutputDeviceState> state = onHeadset ? mHeadsetState : mSpeakerState;
+
+    ::memset(state->mChannelBuffer, 0, audio::frameSizeBytes);
     if (mPtt.load() && mTxRadio == rxIter) {
         // don't analyze and mix-in the radios transmitting, but suppress the
         // effects.
         resetRadioFx(rxIter);
-        AudiableAudioStreams[rxIter].store(0);
         return true;
     }
     // now, find all streams that this applies to.
@@ -215,9 +242,8 @@ size_t rxIter)
     float vhfGain = 0.0f;
     float acBusGain = 0.0f;
     uint32_t concurrentStreams = 0;
-    for (auto &srcPair: mIncomingStreams) {
-        if (!srcPair.second.source || !srcPair.second.source->isActive() ||
-                (sampleCache.find(srcPair.second.source.get()) == sampleCache.end())) {
+    for (auto &srcPair: (onHeadset ? mHeadsetIncomingStreams : mSpeakerIncomingStreams)) {
+        if (!srcPair.second.source || !srcPair.second.source->isActive() || (sampleCache.find(srcPair.second.source.get()) == sampleCache.end())) {
             continue;
         }
         bool mUseStream = false;
@@ -262,7 +288,7 @@ size_t rxIter)
             // then include this stream.
             try {
                 mix_buffers(
-                            mChannelBuffer,
+                            state->mChannelBuffer,
                             sampleCache.at(srcPair.second.source.get()),
                             voiceGain * mRadioState[rxIter].Gain);
                 concurrentStreams++;
@@ -271,7 +297,6 @@ size_t rxIter)
             }
         }
     }
-    AudiableAudioStreams[rxIter].store(concurrentStreams);
 
     if (concurrentStreams > 0) {
 
@@ -280,29 +305,29 @@ size_t rxIter)
             // limiter effect
             for(unsigned int i = 0; i < audio::frameSizeSamples; i++)
             {
-                if(mChannelBuffer[i] > 1.0f)
-                    mChannelBuffer[i] = 1.0f;
-                if(mChannelBuffer[i] < -1.0f)
-                    mChannelBuffer[i] = -1.0f;
+                if(state->mChannelBuffer[i] > 1.0f)
+                    state->mChannelBuffer[i] = 1.0f;
+                if(state->mChannelBuffer[i] < -1.0f)
+                    state->mChannelBuffer[i] = -1.0f;
             }
 
-            mRadioState[rxIter].vhfFilter.transformFrame(mChannelBuffer, mChannelBuffer);
-            mRadioState[rxIter].simpleCompressorEffect.transformFrame(mChannelBuffer, mChannelBuffer);
+            mRadioState[rxIter].vhfFilter.transformFrame(state->mChannelBuffer, state->mChannelBuffer);
+            mRadioState[rxIter].simpleCompressorEffect.transformFrame(state->mChannelBuffer, state->mChannelBuffer);
 
             set_radio_effects(rxIter);
-            if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain))
+            if (!mix_effect(mRadioState[rxIter].Crackle, crackleGain * mRadioState[rxIter].Gain, state))
             {
                 mRadioState[rxIter].Crackle.reset();
             }
-            if (!mix_effect(mRadioState[rxIter].HfWhiteNoise, hfGain * mRadioState[rxIter].Gain))
+            if (!mix_effect(mRadioState[rxIter].HfWhiteNoise, hfGain * mRadioState[rxIter].Gain, state))
             {
                 mRadioState[rxIter].HfWhiteNoise.reset();
             }
-            if (!mix_effect(mRadioState[rxIter].VhfWhiteNoise, vhfGain * mRadioState[rxIter].Gain))
+            if (!mix_effect(mRadioState[rxIter].VhfWhiteNoise, vhfGain * mRadioState[rxIter].Gain, state))
             {
                 mRadioState[rxIter].VhfWhiteNoise.reset();
             }
-            if (!mix_effect(mRadioState[rxIter].AcBus, acBusGain * mRadioState[rxIter].Gain))
+            if (!mix_effect(mRadioState[rxIter].AcBus, acBusGain * mRadioState[rxIter].Gain, state))
             {
                 mRadioState[rxIter].AcBus.reset();
             }
@@ -311,7 +336,7 @@ size_t rxIter)
             if (!mRadioState[rxIter].BlockTone) {
                 mRadioState[rxIter].BlockTone = std::make_shared<audio::SineToneSource>(fxBlockToneFreq);
             }
-            if (!mix_effect(mRadioState[rxIter].BlockTone, fxBlockToneGain * mRadioState[rxIter].Gain)) {
+            if (!mix_effect(mRadioState[rxIter].BlockTone, fxBlockToneGain * mRadioState[rxIter].Gain, state)) {
                 mRadioState[rxIter].BlockTone.reset();
             }
         } else {
@@ -326,46 +351,63 @@ size_t rxIter)
         }
     }
     mRadioState[rxIter].mLastRxCount = concurrentStreams;
+
     // if we have a pending click, play it.
-    if (!mix_effect(mRadioState[rxIter].Click, fxClickGain * mRadioState[rxIter].Gain)) {
+    if (!mix_effect(mRadioState[rxIter].Click, fxClickGain * mRadioState[rxIter].Gain, state)) {
         mRadioState[rxIter].Click.reset();
     }
+
     // now, finally, mix the channel buffer into the mixing buffer.
-    mix_buffers(mMixingBuffer, mChannelBuffer);
+    if(mSplitChannels) {
+        if(rxIter == 0) {
+            mix_buffers(state->mLeftMixingBuffer, state->mChannelBuffer);
+        } else if(rxIter == 1) {
+            mix_buffers(state->mRightMixingBuffer, state->mChannelBuffer);
+        }
+    } else {
+        mix_buffers(state->mMixingBuffer, state->mChannelBuffer);
+    }
+
     return false;
 }
 
-audio::SourceStatus RadioSimulation::getAudioFrame(audio::SampleType *bufferOut)
+audio::SourceStatus RadioSimulation::getAudioFrame(audio::SampleType *bufferOut, bool onHeadset)
 {
+    std::shared_ptr<OutputDeviceState> state = onHeadset ? mHeadsetState : mSpeakerState;
+
     std::lock_guard<std::mutex> radioStateGuard(mRadioStateLock);
     std::lock_guard<std::mutex> streamGuard(mStreamMapLock);
 
     std::map<void *, audio::SampleType[audio::frameSizeSamples]> sampleCache;
-    std::map<void *, audio::SampleType[audio::frameSizeSamples]> eqSampleCache;
-
-    uint32_t allStreams = 0;
-    // first, pull frames from all active audio sources.
-    for (auto &src: mIncomingStreams) {
-        if (src.second.source && src.second.source->isActive() &&
-                (sampleCache.find(src.second.source.get()) == sampleCache.end())) {
+    for (auto &src: (onHeadset ? mHeadsetIncomingStreams : mSpeakerIncomingStreams)) {
+        if (src.second.source && src.second.source->isActive() && (sampleCache.find(src.second.source.get()) == sampleCache.end())) {
             const auto rv = src.second.source->getAudioFrame(sampleCache[src.second.source.get()]);
             if (rv != audio::SourceStatus::OK) {
                 sampleCache.erase(src.second.source.get());
-            } else {
-                allStreams++;
             }
         }
     }
-    IncomingAudioStreams.store(allStreams);
 
-    // empty the output buffer.
-    ::memset(mMixingBuffer, 0, sizeof(audio::SampleType) * audio::frameSizeSamples);
+    ::memset(state->mLeftMixingBuffer, 0, sizeof(audio::SampleType) * audio::frameSizeSamples);
+    ::memset(state->mRightMixingBuffer, 0, sizeof(audio::SampleType) * audio::frameSizeSamples);
+    ::memset(state->mMixingBuffer, 0, sizeof(audio::SampleType) * audio::frameSizeSamples);
 
     size_t rxIter = 0;
     for (rxIter = 0; rxIter < mRadioState.size(); rxIter++) {
-        _process_radio(sampleCache, eqSampleCache, rxIter);
-    } // rxIter
-    ::memcpy(bufferOut, mMixingBuffer, sizeof(audio::SampleType) * audio::frameSizeSamples);
+        if(mRadioState[rxIter].onHeadset == onHeadset) {
+            _process_radio(sampleCache, rxIter, onHeadset);
+        }
+    }
+
+    if(mSplitChannels) {
+        audio::SampleType interleavedSamples[audio::frameSizeSamples * 2];
+        interleave(state->mLeftMixingBuffer, state->mRightMixingBuffer, interleavedSamples, audio::frameSizeSamples);
+        ::memcpy(bufferOut, interleavedSamples, sizeof(audio::SampleType) * audio::frameSizeSamples * 2);
+    }
+    else {
+        ::memcpy(bufferOut, state->mMixingBuffer, sizeof(audio::SampleType) * audio::frameSizeSamples);
+    }
+
     return audio::SourceStatus::OK;
 }
 
@@ -389,11 +431,11 @@ void RadioSimulation::set_radio_effects(size_t rxIter)
     }
 }
 
-bool RadioSimulation::mix_effect(std::shared_ptr<ISampleSource> effect, float gain) {
+bool RadioSimulation::mix_effect(std::shared_ptr<audio::ISampleSource> effect, float gain, std::shared_ptr<OutputDeviceState> state) {
     if (effect && gain > 0.0f) {
-        auto rv = effect->getAudioFrame(mFetchBuffer);
+        auto rv = effect->getAudioFrame(state->mFetchBuffer);
         if (rv == audio::SourceStatus::OK) {
-            RadioSimulation::mix_buffers(mChannelBuffer, mFetchBuffer, gain);
+            RadioSimulation::mix_buffers(state->mChannelBuffer, state->mFetchBuffer, gain);
         } else {
             return false;
         }
@@ -401,20 +443,15 @@ bool RadioSimulation::mix_effect(std::shared_ptr<ISampleSource> effect, float ga
     return true;
 }
 
-RadioSimulation::~RadioSimulation()
-{
-    delete[] mFetchBuffer;
-    delete[] mMixingBuffer;
-    delete[] mChannelBuffer;
-    delete[] AudiableAudioStreams;
-}
-
 void RadioSimulation::rxVoicePacket(const afv::dto::AudioRxOnTransceivers &pkt)
 {
     std::lock_guard<std::mutex> streamMapLock(mStreamMapLock);
     //FIXME:  Deal with the case of a single-callsign transmitting multiple different voicestreams simultaneously.
-    mIncomingStreams[pkt.Callsign].source->appendAudioDTO(pkt);
-    mIncomingStreams[pkt.Callsign].transceivers = pkt.Transceivers;
+    mHeadsetIncomingStreams[pkt.Callsign].source->appendAudioDTO(pkt);
+    mHeadsetIncomingStreams[pkt.Callsign].transceivers = pkt.Transceivers;
+
+    mSpeakerIncomingStreams[pkt.Callsign].source->appendAudioDTO(pkt);
+    mSpeakerIncomingStreams[pkt.Callsign].transceivers = pkt.Transceivers;
 }
 
 void RadioSimulation::setFrequency(unsigned int radio, unsigned int frequency)
@@ -519,15 +556,25 @@ void RadioSimulation::maintainIncomingStreams()
 {
     std::lock_guard<std::mutex> ml(mStreamMapLock);
     std::vector<std::string> callsignsToPurge;
+    std::vector<std::string> speakerCallsignsToPurge;
     util::monotime_t now = util::monotime_get();
-    for (const auto &streamPair: mIncomingStreams) {
+    for (const auto &streamPair: mHeadsetIncomingStreams) {
         auto idleTime = now - streamPair.second.source->getLastActivityTime();
         if ((now - streamPair.second.source->getLastActivityTime()) > audio::compressedSourceCacheTimeoutMs) {
             callsignsToPurge.emplace_back(streamPair.first);
         }
     }
+    for (const auto &streamPair : mSpeakerIncomingStreams) {
+        auto idleTime = now - streamPair.second.source->getLastActivityTime();
+        if ((now - streamPair.second.source->getLastActivityTime()) > audio::compressedSourceCacheTimeoutMs) {
+            speakerCallsignsToPurge.emplace_back(streamPair.first);
+        }
+    }
     for (const auto &callsign: callsignsToPurge) {
-        mIncomingStreams.erase(callsign);
+        mHeadsetIncomingStreams.erase(callsign);
+    }
+    for(const auto &callsign: speakerCallsignsToPurge) {
+        mSpeakerIncomingStreams.erase(callsign);
     }
     mMaintenanceTimer.enable(maintenanceTimerIntervalMs);
 }
@@ -541,7 +588,8 @@ void RadioSimulation::reset()
 {
     {
         std::lock_guard<std::mutex> ml(mStreamMapLock);
-        mIncomingStreams.clear();
+        mHeadsetIncomingStreams.clear();
+        mSpeakerIncomingStreams.clear();
     }
     mTxSequence.store(0);
     mPtt.store(false);
@@ -590,4 +638,27 @@ void RadioSimulation::setEnableHfSquelch(bool enableSquelch)
     for (auto& thisRadio : mRadioState) {
         thisRadio.mHfSquelch = enableSquelch;
     }
+}
+
+void RadioSimulation::setupDevices(util::ChainedCallback<void (ClientEventType, void *, void *)> *eventCallback)
+{
+    mHeadsetDevice = std::make_shared<OutputAudioDevice>(shared_from_this(), true);
+    mSpeakerDevice = std::make_shared<OutputAudioDevice>(shared_from_this(), false);
+
+    mHeadsetState = std::make_shared<OutputDeviceState>();
+    mSpeakerState = std::make_shared<OutputDeviceState>();
+
+    ClientEventCallback = eventCallback;
+}
+
+void RadioSimulation::setOnHeadset(unsigned int radio, bool onHeadset)
+{
+    std::lock_guard<std::mutex> mRadioStateGuard(mRadioStateLock);
+    mRadioState[radio].onHeadset = onHeadset;
+}
+
+void RadioSimulation::setSplitAudioChannels(bool splitChannels)
+{
+    std::lock_guard<std::mutex> mRadioStateGuard(mRadioStateLock);
+    mSplitChannels = splitChannels;
 }

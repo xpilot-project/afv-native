@@ -2,6 +2,7 @@
 #define MINIAUDIO_DEVICE_H
 
 #define MINIAUDIO_IMPLEMENTATION
+#define MA_COINIT_VALUE COINIT_APARTMENTTHREADED
 #define MA_NO_WEBAUDIO
 #define MA_NO_NULL
 #include "miniaudio.h"
@@ -22,7 +23,8 @@ namespace afv_native
                     const std::string& userStreamName,
                     const std::string& outputDeviceName,
                     const std::string& inputDeviceName,
-                    Api audioApi);
+                    Api audioApi,
+                    bool splitChannels);
             virtual ~MiniAudioAudioDevice();
 
             bool openOutput() override;
@@ -47,6 +49,7 @@ namespace afv_native
             std::string mInputDeviceName;
             bool mOutputInitialized;
             bool mInputInitialized;
+            bool mSplitChannels;
             ma_context context;
             ma_device outputDev;
             ma_device inputDev;
