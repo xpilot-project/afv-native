@@ -67,7 +67,7 @@ Client::Client(
         mTransceiverUpdateTimer(mEvBase, std::bind(&Client::sendTransceiverUpdate, this)),
         mClientName(clientName),
         mAudioApi(0),
-        mAudioInputDeviceName(),
+        mMicrophoneDeviceName(),
         mSpeakerDeviceName(),
         mHeadsetDeviceName(),
         mSplitAudioChannels(false),
@@ -242,8 +242,8 @@ void Client::sessionStateCallback(afv::APISessionState state)
 
 void Client::startAudio()
 {
-    if(mSpeakerDeviceName.empty() || mHeadsetDeviceName.empty() || mAudioInputDeviceName.empty()) {
-        const char* error = "Audio devices are not configured correctly. You will not be able to communicate on voice until you correctly configure your audio devices in the xPilot settings.";
+    if(mSpeakerDeviceName.empty() || mHeadsetDeviceName.empty() || mMicrophoneDeviceName.empty()) {
+        const char* error = "Your audio settings are not configured correctly. To utilize the voice communication feature in xPilot, ensure that your speaker, headset, and microphone devices are properly set up within the xPilot settings.";
         if(!mInvalidDeviceConfig) {
             ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
             mInvalidDeviceConfig = true;
@@ -252,88 +252,126 @@ void Client::startAudio()
         return;
     }
 
-    if (!mSpeakerDevice) {
-        LOG("afv::Client", "Initializing speaker audio device...");
-        mSpeakerDevice = audio::AudioDevice::makeDevice(
-                "afv::speaker",
-                mSpeakerDeviceName,
-                mAudioInputDeviceName,
-                mAudioApi,
-                mSplitAudioChannels);
-
-        if(!mSpeakerDevice) {
-            const char* error = "Audio Error: Could not initialize speaker device context.";
-            ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
-            LOG("afv::Client", error);
-            return;
-        }
-    }
-    else {
-        LOG("afv::Client", "Speaker device already exists, skipping creation.");
-    }
-
-    if(mSpeakerDevice->openOutput()) {
-        mSpeakerDevice->setSink(nullptr);
-        mSpeakerDevice->setSource(mRadioSim->speakerDevice());
-    }
-    else {
-        const char* error = "Audio Error: Could not open speaker audio device. Please check the xPilot audio settings and try again.";
-        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
-        LOG("afv::Client", error);
-        return;
-    }
-
-    if(!mHeadsetDevice) {
-        LOG("afv::Client", "Initializing headset audio device...");
-        mHeadsetDevice = audio::AudioDevice::makeDevice(
-            "afv::headset",
-            mHeadsetDeviceName,
-            mAudioInputDeviceName,
-            mAudioApi,
-            mSplitAudioChannels);
-
-        if(!mHeadsetDevice) {
-            const char* error = "Audio Error: Could not initialize headset device context.";
-            ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
-            LOG("afv::Client", error);
-            return;
-        }
-    }
-    else{
-       LOG("afv::Client", "Headset device already exists, skipping creation.");
-    }
-
-    if(mHeadsetDevice->openOutput()) {
-       if(mHeadsetDevice->openInput()) {
-            mHeadsetDevice->setSink(mRadioSim);
-            mHeadsetDevice->setSource(mRadioSim->headsetDevice());
-       }
-       else {
-            const char* error = "Audio Error: Could not initialize microphone device.";
-            ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
-            LOG("afv::Client", error);
-            return;
-       }
-    }
-    else {
-       stopAudio();
-       const char* error = "Audio Error: Could not initialize headset device. Please check the xPilot audio settings and try again.";
-       ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
-       LOG("afv::Client", error);
-    }
+    startMicrophone();
+    startHeadset();
+    startSpeaker();
 }
 
 void Client::stopAudio()
 {
-    if (mSpeakerDevice) {
-        mSpeakerDevice->close();
-        mSpeakerDevice.reset();
+    if(mMicrophoneDevice) {
+        mMicrophoneDevice->close();
+        mMicrophoneDevice.reset();
     }
 
     if(mHeadsetDevice) {
         mHeadsetDevice->close();
         mHeadsetDevice.reset();
     }
+
+    if (mSpeakerDevice) {
+        mSpeakerDevice->close();
+        mSpeakerDevice.reset();
+    }
+}
+
+void Client::startMicrophone()
+{
+    if(mMicrophoneDevice) {
+        mMicrophoneDevice->close();
+        mMicrophoneDevice.reset();
+    }
+
+    LOG("afv::Client", "Initializing microphone device...");
+
+    mMicrophoneDevice = audio::AudioDevice::makeDevice(
+        "afv::microphone",
+        mMicrophoneDeviceName,
+        mAudioApi,
+        mSplitAudioChannels);
+
+    if(!mMicrophoneDevice) {
+        const char* error = "Audio Error: Could not initialize microphone device context.";
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
+        LOG("afv::Client", error);
+        return;
+    }
+
+    if(!mMicrophoneDevice->openInput()) {
+        const char* error = "Audio Error: Could not open microphone device. Please check the xPilot audio settings and try again.";
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
+        LOG("afv::Client", error);
+        return;
+    }
+
+    mMicrophoneDevice->setSink(mRadioSim);
+    mMicrophoneDevice->setSource(nullptr);
+}
+
+void Client::startHeadset()
+{
+    if(mHeadsetDevice) {
+        mHeadsetDevice->close();
+        mHeadsetDevice.reset();
+    }
+
+    LOG("afv::Client", "Initializing headset device...");
+
+    mHeadsetDevice = audio::AudioDevice::makeDevice(
+        "afv::headset",
+        mHeadsetDeviceName,
+        mAudioApi,
+        mSplitAudioChannels);
+
+    if(!mHeadsetDevice) {
+        const char* error = "Audio Error: Could not initialize headset device context.";
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
+        LOG("afv::Client", error);
+        return;
+    }
+
+    if(!mHeadsetDevice->openOutput()) {
+        const char* error = "Audio Error: Could not open headset device. Please check the xPilot audio settings and try again.";
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
+        LOG("afv::Client", error);
+        return;
+    }
+
+    mHeadsetDevice->setSink(nullptr);
+    mHeadsetDevice->setSource(mRadioSim->headsetDevice());
+}
+
+void Client::startSpeaker()
+{
+    if(mSpeakerDevice) {
+        mSpeakerDevice->close();
+        mSpeakerDevice.reset();
+    }
+
+    LOG("afv::Client", "Initializing speaker device...");
+
+    mSpeakerDevice = audio::AudioDevice::makeDevice(
+        "afv::speaker",
+        mSpeakerDeviceName,
+        mAudioApi,
+        mSplitAudioChannels);
+
+    if(!mSpeakerDevice) {
+        const char* error = "Audio Error: Could not initialize speaker device context.";
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
+        LOG("afv::Client", error);
+        return;
+    }
+
+    if(!mSpeakerDevice->openOutput()) {
+        const char* error = "Audio Error: Could not open speaker device. Please check the xPilot audio settings and try again.";
+        ClientEventCallback.invokeAll(ClientEventType::AudioError, reinterpret_cast<void*>(const_cast<char*>(error)), nullptr);
+        LOG("afv::Client", error);
+        return;
+    }
+
+    mSpeakerDevice->setSink(nullptr);
+    mSpeakerDevice->setSource(mRadioSim->speakerDevice());
 }
 
 std::vector<afv::dto::Transceiver> Client::makeTransceiverDto()
@@ -442,9 +480,9 @@ bool Client::areTransceiversSynced() const
     return true;
 }
 
-void Client::setAudioInputDevice(std::string inputDevice)
+void Client::setMicrophoneDevice(std::string inputDevice)
 {
-    mAudioInputDeviceName = inputDevice;
+    mMicrophoneDeviceName = inputDevice;
 }
 
 void Client::setSpeakerDevice(std::string speakerDevice) {
@@ -553,6 +591,10 @@ std::vector<afv::dto::Station> Client::getStationAliases() const
 
 std::shared_ptr<const afv::RadioSimulation> Client::getRadioSimulation() const {
     return mRadioSim;
+}
+
+std::shared_ptr<const audio::AudioDevice> Client::getMicrophoneDevice() const {
+    return mMicrophoneDevice;
 }
 
 std::shared_ptr<const audio::AudioDevice> Client::getHeadsetDevice() const {

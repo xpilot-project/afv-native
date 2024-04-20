@@ -158,7 +158,7 @@ namespace afv_native {
          */
         void setAudioApi(audio::AudioDevice::Api api);
 
-        void setAudioInputDevice(std::string inputDevice);
+        void setMicrophoneDevice(std::string inputDevice);
         void setSpeakerDevice(std::string speakerDevice);
         void setHeadsetDevice(std::string headsetDevice);
 
@@ -220,7 +220,12 @@ namespace afv_native {
         void startAudio();
         void stopAudio();
 
+        void startMicrophone();
+        void startHeadset();
+        void startSpeaker();
+
         std::shared_ptr<const afv::RadioSimulation> getRadioSimulation() const;
+        std::shared_ptr<const audio::AudioDevice> getMicrophoneDevice() const;
         std::shared_ptr<const audio::AudioDevice> getHeadsetDevice() const;
         std::shared_ptr<const audio::AudioDevice> getSpeakerDevice() const;
 
@@ -253,6 +258,7 @@ namespace afv_native {
         afv::VoiceSession mVoiceSession;
         std::shared_ptr<afv::RadioSimulation> mRadioSim;
 
+        std::shared_ptr<audio::AudioDevice> mMicrophoneDevice;
         std::shared_ptr<audio::AudioDevice> mHeadsetDevice;
         std::shared_ptr<audio::AudioDevice> mSpeakerDevice;
 
@@ -290,7 +296,7 @@ namespace afv_native {
 
         std::string mClientName;
         audio::AudioDevice::Api mAudioApi;
-        std::string mAudioInputDeviceName;
+        std::string mMicrophoneDeviceName;
         std::string mHeadsetDeviceName;
         std::string mSpeakerDeviceName;
         bool mSplitAudioChannels;
