@@ -17,16 +17,13 @@ void logger(void* pUserData, ma_uint32 logLevel, const char* message)
 
 MiniAudioAudioDevice::MiniAudioAudioDevice(
         const std::string& userStreamName,
-        const std::string& outputDeviceName,
-        const std::string& inputDeviceName,
+        const std::string& deviceName,
         AudioDevice::Api audioApi,
         bool splitChannels) :
     AudioDevice(),
     mUserStreamName(userStreamName),
-    mOutputDeviceName(outputDeviceName),
-    mInputDeviceName(inputDeviceName),
-    mInputInitialized(false),
-    mOutputInitialized(false),
+    mDeviceName(deviceName),
+    mDeviceInitialized(false),
     mSplitChannels(splitChannels)
 {
     ma_context_config contextConfig = ma_context_config_init();
@@ -60,58 +57,74 @@ bool MiniAudioAudioDevice::openInput()
 
 void MiniAudioAudioDevice::close()
 {
-    if(mInputInitialized)
-        ma_device_uninit(&inputDev);
-
-    if(mOutputInitialized)
-        ma_device_uninit(&outputDev);
-
+    if(mDeviceInitialized)
+        ma_device_uninit(&audioDevice);
     ma_context_uninit(&context);
-
-    mInputInitialized = false;
-    mOutputInitialized = false;
+    mDeviceInitialized = false;
 }
 
+static std::map<int, ma_device_info> cachedInputDevices;
 std::map<int, ma_device_info> MiniAudioAudioDevice::getCompatibleInputDevices()
 {
     std::map<int, ma_device_info> deviceList;
 
     ma_device_info* devices;
     ma_uint32 deviceCount;
-    ma_context context;
+    ma_context maContext;
 
-    ma_result result = ma_context_init(NULL, 0, NULL, &context);
+    ma_result result = ma_context_init(NULL, 0, NULL, &maContext);
     if(result == MA_SUCCESS) {
-        result = ma_context_get_devices(&context, NULL, NULL, &devices, &deviceCount);
+        result = ma_context_get_devices(&maContext, NULL, NULL, &devices, &deviceCount);
         if(result == MA_SUCCESS) {
-            LOG("MiniAudioAudioDevice", "Successfully queried %d input devices", deviceCount);
-            for(ma_uint32 i = 0; i < deviceCount; i++) {
-                deviceList.emplace(i, devices[i]);
-
-                // log detailed device info
-                {
-                    ma_device_info detailedDeviceInfo;
-                    result = ma_context_get_device_info(&context, ma_device_type_capture, &devices[i].id, &detailedDeviceInfo);
-                    if(result == MA_SUCCESS)
-                    {
-                        LOG("MiniAudioAudioDevice", "Input: %s (Default: %s, Format Count: %d)",
-                            devices[i].name,
-                            detailedDeviceInfo.isDefault ? "Yes" : "No",
-                            detailedDeviceInfo.nativeDataFormatCount);
-
-                        ma_uint32 iFormat;
-                        for(iFormat = 0; iFormat < detailedDeviceInfo.nativeDataFormatCount; ++iFormat)
-                        {
-                            LOG("MiniAudioAudioDevice", "   --> Format: %s, Channels: %d, Sample Rate: %d",
-                                ma_get_format_name(detailedDeviceInfo.nativeDataFormats[iFormat].format),
-                                detailedDeviceInfo.nativeDataFormats[iFormat].channels,
-                                detailedDeviceInfo.nativeDataFormats[iFormat].sampleRate);
-                        }
-                    }
-                    else {
-                        LOG("MiniAudioAudioDevice", "Error getting input device info: %s", ma_result_description(result));
+            // Check if there's a change in the available devices
+            bool devicesChanged = false;
+            if (cachedInputDevices.size() != deviceCount) {
+                devicesChanged = true;
+            } else {
+                for (ma_uint32 i = 0; i < deviceCount; i++) {
+                    if (cachedInputDevices.find(i) == cachedInputDevices.end() ||
+                        memcmp(&cachedInputDevices[i].id, &devices[i].id, sizeof(ma_device_id)) != 0) {
+                        devicesChanged = true;
+                        break;
                     }
                 }
+            }
+
+            if (devicesChanged) {
+                LOG("MiniAudioAudioDevice", "Input devices have changed: %d devices found.", deviceCount);
+                for(ma_uint32 i = 0; i < deviceCount; i++) {
+                    deviceList.emplace(i, devices[i]);
+
+                    // log detailed device info
+                    {
+                        ma_device_info detailedDeviceInfo;
+                        result = ma_context_get_device_info(&maContext, ma_device_type_capture, &devices[i].id, &detailedDeviceInfo);
+                        if(result == MA_SUCCESS)
+                        {
+                            LOG("MiniAudioAudioDevice", "Input: %s (Default: %s, Format Count: %d)",
+                                devices[i].name,
+                                detailedDeviceInfo.isDefault ? "Yes" : "No",
+                                detailedDeviceInfo.nativeDataFormatCount);
+
+                            ma_uint32 iFormat;
+                            for(iFormat = 0; iFormat < detailedDeviceInfo.nativeDataFormatCount; ++iFormat)
+                            {
+                                LOG("MiniAudioAudioDevice", "   --> Format: %s, Channels: %d, Sample Rate: %d",
+                                    ma_get_format_name(detailedDeviceInfo.nativeDataFormats[iFormat].format),
+                                    detailedDeviceInfo.nativeDataFormats[iFormat].channels,
+                                    detailedDeviceInfo.nativeDataFormats[iFormat].sampleRate);
+                            }
+                        }
+                        else {
+                            LOG("MiniAudioAudioDevice", "Error getting input device info: %s", ma_result_description(result));
+                        }
+                    }
+                }
+
+                // Update the cache
+                cachedInputDevices = deviceList;
+            } else {
+                deviceList = cachedInputDevices;
             }
         }
         else {
@@ -122,51 +135,73 @@ std::map<int, ma_device_info> MiniAudioAudioDevice::getCompatibleInputDevices()
         LOG("MiniAudioAudioDevice", "Error initializing input device context: %s", ma_result_description(result));
     }
 
-    ma_context_uninit(&context);
+    ma_context_uninit(&maContext);
 
     return deviceList;
 }
 
+static std::map<int, ma_device_info> cachedOutputDevices;
 std::map<int, ma_device_info> MiniAudioAudioDevice::getCompatibleOutputDevices()
 {
     std::map<int, ma_device_info> deviceList;
 
     ma_device_info* devices;
     ma_uint32 deviceCount;
-    ma_context context;
+    ma_context maContext;
 
-    ma_result result = ma_context_init(NULL, 0, NULL, &context);
+    ma_result result = ma_context_init(NULL, 0, NULL, &maContext);
     if(result == MA_SUCCESS) {
-        result = ma_context_get_devices(&context, &devices, &deviceCount, NULL, NULL);
+        result = ma_context_get_devices(&maContext, &devices, &deviceCount, NULL, NULL);
         if(result == MA_SUCCESS) {
-            LOG("MiniAudioAudioDevice", "Successfully queried %d output devices", deviceCount);
-            for(ma_uint32 i = 0; i < deviceCount; i++) {
-                deviceList.emplace(i, devices[i]);
-
-                // log detailed device info
-                {
-                    ma_device_info detailedDeviceInfo;
-                    result = ma_context_get_device_info(&context, ma_device_type_playback, &devices[i].id, &detailedDeviceInfo);
-                    if(result == MA_SUCCESS)
-                    {
-                        LOG("MiniAudioAudioDevice", "Output: %s (Default: %s, Format Count: %d)",
-                            devices[i].name,
-                            detailedDeviceInfo.isDefault ? "Yes" : "No",
-                            detailedDeviceInfo.nativeDataFormatCount);
-
-                        ma_uint32 iFormat;
-                        for(iFormat = 0; iFormat < detailedDeviceInfo.nativeDataFormatCount; ++iFormat)
-                        {
-                            LOG("MiniAudioAudioDevice", "   --> Format: %s, Channels: %d, Sample Rate: %d",
-                                ma_get_format_name(detailedDeviceInfo.nativeDataFormats[iFormat].format),
-                                detailedDeviceInfo.nativeDataFormats[iFormat].channels,
-                                detailedDeviceInfo.nativeDataFormats[iFormat].sampleRate);
-                        }
-                    }
-                    else {
-                        LOG("MiniAudioAudioDevice", "Error getting output device info: %s", ma_result_description(result));
+            // Check if there's a change in the available devices
+            bool devicesChanged = false;
+            if (cachedOutputDevices.size() != deviceCount) {
+                devicesChanged = true;
+            } else {
+                for (ma_uint32 i = 0; i < deviceCount; i++) {
+                    if (cachedOutputDevices.find(i) == cachedOutputDevices.end() ||
+                        memcmp(&cachedOutputDevices[i].id, &devices[i].id, sizeof(ma_device_id)) != 0) {
+                        devicesChanged = true;
+                        break;
                     }
                 }
+            }
+
+            if (devicesChanged) {
+                LOG("MiniAudioAudioDevice", "Output devices have changed: %d devices found.", deviceCount);
+                for(ma_uint32 i = 0; i < deviceCount; i++) {
+                    deviceList.emplace(i, devices[i]);
+
+                    // log detailed device info
+                    {
+                        ma_device_info detailedDeviceInfo;
+                        result = ma_context_get_device_info(&maContext, ma_device_type_playback, &devices[i].id, &detailedDeviceInfo);
+                        if(result == MA_SUCCESS)
+                        {
+                            LOG("MiniAudioAudioDevice", "Output: %s (Default: %s, Format Count: %d)",
+                                devices[i].name,
+                                detailedDeviceInfo.isDefault ? "Yes" : "No",
+                                detailedDeviceInfo.nativeDataFormatCount);
+
+                            ma_uint32 iFormat;
+                            for(iFormat = 0; iFormat < detailedDeviceInfo.nativeDataFormatCount; ++iFormat)
+                            {
+                                LOG("MiniAudioAudioDevice", "   --> Format: %s, Channels: %d, Sample Rate: %d",
+                                    ma_get_format_name(detailedDeviceInfo.nativeDataFormats[iFormat].format),
+                                    detailedDeviceInfo.nativeDataFormats[iFormat].channels,
+                                    detailedDeviceInfo.nativeDataFormats[iFormat].sampleRate);
+                            }
+                        }
+                        else {
+                            LOG("MiniAudioAudioDevice", "Error getting output device info: %s", ma_result_description(result));
+                        }
+                    }
+                }
+
+                // Update the cache
+                cachedOutputDevices = deviceList;
+            } else {
+                deviceList = cachedOutputDevices;
             }
         }
         else {
@@ -177,29 +212,29 @@ std::map<int, ma_device_info> MiniAudioAudioDevice::getCompatibleOutputDevices()
         LOG("MiniAudioAudioDevice", "Error initializing output device context: %s", ma_result_description(result));
     }
 
-    ma_context_uninit(&context);
+    ma_context_uninit(&maContext);
 
     return deviceList;
 }
 
 bool MiniAudioAudioDevice::initOutput()
 {
-    if(mOutputInitialized)
-        ma_device_uninit(&outputDev);
+    if(mDeviceInitialized)
+        ma_device_uninit(&audioDevice);
 
-    if(mOutputDeviceName.empty()) {
+    if(mDeviceName.empty()) {
         LOG("MiniAudioAudioDevice::initOutput()", "Device name is empty");
         return false; // bail early if the device name is empty
     }
 
-    ma_device_id outputDeviceId;
-    if(!getDeviceForName(mOutputDeviceName, false, outputDeviceId)) {
-        LOG("MiniAudioAudioDevice::initOutput()", "No device found for %s", mOutputDeviceName.c_str());
+    ma_device_id deviceId;
+    if(!getDeviceForName(mDeviceName, false, deviceId)) {
+        LOG("MiniAudioAudioDevice::initOutput()", "No device found for %s", mDeviceName.c_str());
         return false; // no device found
     }
 
     ma_device_config cfg = ma_device_config_init(ma_device_type_playback);
-    cfg.playback.pDeviceID = &outputDeviceId;
+    cfg.playback.pDeviceID = &deviceId;
     cfg.playback.format = ma_format_f32;
     cfg.playback.channels = mSplitChannels ? 2 : 1;
     cfg.playback.shareMode = ma_share_mode_shared;
@@ -210,40 +245,40 @@ bool MiniAudioAudioDevice::initOutput()
 
     ma_result result;
 
-    result = ma_device_init(&context, &cfg, &outputDev);
+    result = ma_device_init(&context, &cfg, &audioDevice);
     if(result != MA_SUCCESS) {
         LOG("MiniAudioAudioDevice", "Error initializing output device: %s", ma_result_description(result));
         return false;
     }
 
-    result = ma_device_start(&outputDev);
+    result = ma_device_start(&audioDevice);
     if(result != MA_SUCCESS) {
         LOG("MiniAudioAudioDevice", "Error starting output device: %s", ma_result_description(result));
         return false;
     }
 
-    mOutputInitialized = true;
+    mDeviceInitialized = true;
     return true;
 }
 
 bool MiniAudioAudioDevice::initInput()
 {
-    if(mInputInitialized)
-        ma_device_uninit(&inputDev);
+    if(mDeviceInitialized)
+        ma_device_uninit(&audioDevice);
 
-    if(mInputDeviceName.empty()) {
+    if(mDeviceName.empty()) {
         LOG("MiniAudioAudioDevice::initInput()", "Device name is empty");
         return false; // bail early if the device name is empty
     }
 
-    ma_device_id inputDeviceId;
-    if(!getDeviceForName(mInputDeviceName, true, inputDeviceId)) {
-        LOG("MiniAudioAudioDevice::initInput()", "No device found for %s", mInputDeviceName.c_str());
+    ma_device_id deviceId;
+    if(!getDeviceForName(mDeviceName, true, deviceId)) {
+        LOG("MiniAudioAudioDevice::initInput()", "No device found for %s", mDeviceName.c_str());
         return false; // no device found
     }
 
     ma_device_config cfg = ma_device_config_init(ma_device_type_capture);
-    cfg.capture.pDeviceID = &inputDeviceId;
+    cfg.capture.pDeviceID = &deviceId;
     cfg.capture.format = ma_format_f32;
     cfg.capture.channels = 1;
     cfg.capture.shareMode = ma_share_mode_shared;
@@ -254,19 +289,19 @@ bool MiniAudioAudioDevice::initInput()
 
     ma_result result;
 
-    result = ma_device_init(&context, &cfg, &inputDev);
+    result = ma_device_init(&context, &cfg, &audioDevice);
     if(result != MA_SUCCESS) {
         LOG("MiniAudioAudioDevice", "Error initializing input device: %s", ma_result_description(result));
         return false;
     }
 
-    result = ma_device_start(&inputDev);
+    result = ma_device_start(&audioDevice);
     if(result != MA_SUCCESS) {
         LOG("MiniAudioAudioDevice", "Error starting input device: %s", ma_result_description(result));
         return false;
     }
 
-    mInputInitialized = true;
+    mDeviceInitialized = true;
     return true;
 }
 
@@ -359,10 +394,9 @@ map<int, AudioDevice::DeviceInfo> AudioDevice::getCompatibleOutputDevicesForApi(
 std::shared_ptr<AudioDevice>
 AudioDevice::makeDevice(
         const std::string &userStreamName,
-        const std::string &outputDeviceId,
-        const std::string &inputDeviceId,
+        const std::string &deviceName,
         AudioDevice::Api audioApi,
         bool splitChannels) {
-    auto devsp = std::make_shared<MiniAudioAudioDevice>(userStreamName, outputDeviceId, inputDeviceId, audioApi, splitChannels);
+    auto devsp = std::make_shared<MiniAudioAudioDevice>(userStreamName, deviceName, audioApi, splitChannels);
     return devsp;
 }

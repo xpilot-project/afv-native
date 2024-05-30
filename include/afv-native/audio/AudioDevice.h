@@ -139,8 +139,7 @@ namespace afv_native {
             static std::map<int,DeviceInfo> getCompatibleOutputDevicesForApi(AudioDevice::Api api);
             static std::shared_ptr<AudioDevice> makeDevice(
                     const std::string &userStreamName,
-                    const std::string &outputDeviceId,
-                    const std::string &inputDeviceId,
+                    const std::string &deviceName,
                     Api audioApi = -1,
                     bool splitChannels = false);
         };

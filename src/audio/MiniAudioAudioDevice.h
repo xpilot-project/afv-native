@@ -21,8 +21,7 @@ namespace afv_native
         public:
             explicit MiniAudioAudioDevice(
                     const std::string& userStreamName,
-                    const std::string& outputDeviceName,
-                    const std::string& inputDeviceName,
+                    const std::string& deviceName,
                     Api audioApi,
                     bool splitChannels);
             virtual ~MiniAudioAudioDevice();
@@ -45,14 +44,11 @@ namespace afv_native
 
         private:
             std::string mUserStreamName;
-            std::string mOutputDeviceName;
-            std::string mInputDeviceName;
-            bool mOutputInitialized;
-            bool mInputInitialized;
+            std::string mDeviceName;
+            bool mDeviceInitialized;
             bool mSplitChannels;
             ma_context context;
-            ma_device outputDev;
-            ma_device inputDev;
+            ma_device audioDevice;
         };
     }
 }
