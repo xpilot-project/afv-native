@@ -7,6 +7,3 @@
 [submodule "extern/opus"]
 	path = extern/opus
 	url = git@github.com:xpilot-project/opus.git
-[submodule "extern/portaudio"]
-	path = extern/portaudio
-	url = git@github.com:xpilot-project/portaudio.git
