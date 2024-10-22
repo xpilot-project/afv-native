@@ -428,5 +428,5 @@ void APISession::_stationTransceiversCallback(http::RESTRequest *req, bool succe
 }
 
 std::map<std::string, std::vector<dto::StationTransceiver>> APISession::getStationTransceivers() const {
-    return std::move(mStationTransceivers);
+    return mStationTransceivers;
 }
