@@ -1,9 +1,9 @@
 [submodule "extern/speexdsp"]
 	path = extern/speexdsp
-	url = git@github.com:xpilot-project/speexdsp.git
+	url = https://github.com/xpilot-project/speexdsp
 [submodule "extern/cpp-jwt"]
 	path = extern/cpp-jwt
-	url = git@github.com:arun11299/cpp-jwt.git
+	url = https://github.com/arun11299/cpp-jwt
 [submodule "extern/opus"]
 	path = extern/opus
-	url = git@github.com:xpilot-project/opus.git
+	url = https://github.com/xpilot-project/opus
