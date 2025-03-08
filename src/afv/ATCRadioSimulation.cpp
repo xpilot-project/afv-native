@@ -785,7 +785,7 @@ void afv_native::afv::ATCRadioSimulation::setRx(unsigned int freq, bool rx) {
         mRadioState[freq].lastVoiceTime             = 0;
     }
     mRadioState[freq].rx = rx;
-    LOG("ATCRadioSimulation", "setRxRadio: %i", freq);
+    LOG("ATCRadioSimulation", "setRxRadio: %i %d", freq, rx);
 }
 
 void afv_native::afv::ATCRadioSimulation::setTx(unsigned int freq, bool tx) {
@@ -795,7 +795,7 @@ void afv_native::afv::ATCRadioSimulation::setTx(unsigned int freq, bool tx) {
         return;
     }
     mRadioState[freq].tx = tx;
-    LOG("ATCRadioSimulation", "setTxRadio: %i", freq);
+    LOG("ATCRadioSimulation", "setTxRadio: %i %d", freq, tx);
 };
 
 void afv_native::afv::ATCRadioSimulation::setXc(unsigned int freq, bool xc) {
@@ -805,7 +805,7 @@ void afv_native::afv::ATCRadioSimulation::setXc(unsigned int freq, bool xc) {
         return;
     }
     mRadioState[freq].xc = xc;
-    LOG("ATCRadioSimulation", "setXcRadio: %i", freq);
+    LOG("ATCRadioSimulation", "setXcRadio: %i %d", freq, xc);
 };
 
 void afv_native::afv::ATCRadioSimulation::setCrossCoupleAcross(unsigned int freq, bool crossCoupleAcross) {
@@ -903,7 +903,7 @@ std::vector<afv::dto::Transceiver> ATCRadioSimulation::makeTransceiverDto() {
 
 std::vector<afv::dto::CrossCoupleGroup> ATCRadioSimulation::makeCrossCoupleGroupDto() {
     // Make one cross couple group per frequency
-    std::lock_guard<std::mutex>        radioStateGuard(mRadioStateLock);
+    std::lock_guard<std::mutex>             radioStateGuard(mRadioStateLock);
     std::vector<afv::dto::CrossCoupleGroup> out   = {{0, {}}};
     unsigned int                            index = 1;
 
