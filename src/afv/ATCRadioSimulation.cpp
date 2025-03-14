@@ -150,6 +150,7 @@ void ATCRadioSimulation::processCompressedFrame(std::vector<unsigned char> compr
 
                 for (const auto trans: radio.transceivers) {
                     audioOutDto.Transceivers.emplace_back(trans.ID);
+                    LOG("ATCRadioSimulation", "XMIT XCVR ID:  %d", trans.ID);
                 }
             }
         }
