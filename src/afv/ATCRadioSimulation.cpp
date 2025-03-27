@@ -288,7 +288,7 @@ bool ATCRadioSimulation::_process_radio(const std::map<void *, audio::SampleType
         if (mRadioState[rxIter].mLastRxCount == 0 && !ignoreaudio) {
             // Post Begin Voice Receiving Notfication
             unsigned int freq = rxIter;
-            mRadioState[rxIter].liveTransmittingCallsigns = {}; // We know for sure nobody is transmitting yet
+            // mRadioState[rxIter].liveTransmittingCallsigns = {};
             ClientEventCallback->invokeAll(ClientEventType::FrequencyRxBegin, &freq, nullptr);
             LOG("ATCRadioSimulation", "FrequencyRxBegin event: %i", freq);
         }
