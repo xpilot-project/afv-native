@@ -41,7 +41,8 @@
 #include <vector>
 
 using namespace std;
-static FILE *gLoggerFh = nullptr;
+static FILE       *gLoggerFh    = nullptr;
+static std::string gLogFilePath = "afv.log";
 
 static void cleanUpDefaultLogger() {
     if (nullptr != gLoggerFh) {
@@ -55,12 +56,13 @@ static void defaultLogger(std::string subsystem, std::string file, int line, std
     time_t t = time(nullptr);
     strftime(dateTimeBuf, 100, "%c", localtime(&t));
     if (nullptr == gLoggerFh) {
-        gLoggerFh = fopen("afv.log", "at");
+        gLoggerFh = fopen(gLogFilePath.c_str(), "at");
         atexit(cleanUpDefaultLogger);
     }
     if (nullptr != gLoggerFh) {
 #ifdef NDEBUG
-        fprintf(gLoggerFh, "%s: %s: %s\n", dateTimeBuf, subsystem.c_str(), outputLine.c_str());
+        fprintf(gLoggerFh, "%s: %s: %s\n", dateTimeBuf, subsystem.c_str(),
+                outputLine.c_str());
 #else
         fprintf(gLoggerFh, "%s: %s: %s(%d): %s\n", dateTimeBuf, subsystem.c_str(), file.c_str(), line,
                 outputLine.c_str());
@@ -88,7 +90,7 @@ void afv_native::__Log(const char *file, int line, const char *subsystem, const 
     {
         std::lock_guard<std::mutex> logLock(gLoggerLock);
 
-        if(gLogger) {
+        if (gLogger) {
             gLogger(subsystem, file, line, outBuffer.data());
         }
     }
@@ -105,6 +107,10 @@ void afv_native::setLegacyLogger(afv_native::log_fn newLogger) {
 void afv_native::setLogger(afv_native::modern_log_fn newLogger) {
     gLogger = newLogger;
 };
+
+void afv_native::setLogFilePath(std::string path) {
+    gLogFilePath = path;
+}
 
 void afv_native::__Dumphex(const char *file, int line, const char *subsystem, const void *buf, size_t len) {
     for (size_t i = 0; i < len;) {

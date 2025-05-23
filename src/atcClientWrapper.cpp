@@ -40,8 +40,12 @@ void afv_native::api::setLogger(afv_native::modern_log_fn gLogger) {
     afv_native::setLogger(gLogger);
 }
 
+void afv_native::api::setLogFilePath(std::string path) {
+    afv_native::setLogFilePath(path);
+}
+
 afv_native::api::atcClient::atcClient(std::string clientName, std::string resourcePath, std::string baseURL) {
-    LOG("ATCWRAPPER","ENTRY");
+    LOG("ATCWRAPPER", "ENTRY");
 #ifdef WIN32
     WORD    wVersionRequested;
     WSADATA wsaData;
@@ -50,23 +54,21 @@ afv_native::api::atcClient::atcClient(std::string clientName, std::string resour
 #endif
 
     ev_base = event_base_new();
-    LOG("ATCWRAPPER","Event Base Created");
-    LOG("ATCWRAPPER","Creating client named: %s resource: %s baseURL: %s",clientName.c_str(),resourcePath.c_str(),baseURL.c_str());
+    LOG("ATCWRAPPER", "Event Base Created");
+    LOG("ATCWRAPPER", "Creating client named: %s resource: %s baseURL: %s",
+        clientName.c_str(), resourcePath.c_str(), baseURL.c_str());
 
     try {
         client = std::make_unique<afv_native::ATCClient>(ev_base, resourcePath, clientName, baseURL);
-        LOG("ATCWRAPPER","Client Created");
-    }
-    catch (std::exception &e) {
-        LOG("ATCWRAPPER","Client Create Exception: %s",e.what()); 
-        
+        LOG("ATCWRAPPER", "Client Created");
+    } catch (std::exception &e) {
+        LOG("ATCWRAPPER", "Client Create Exception: %s", e.what());
+
         throw;
     }
 
-    
-
     eventThread = std::make_unique<std::thread>([this] {
-        LOG("ATCWRAPPER","event Thread Created");
+        LOG("ATCWRAPPER", "event Thread Created");
         while (!requestLoopExit) {
             event_base_loop(ev_base, EVLOOP_NONBLOCK);
 #ifdef WIN32
@@ -75,15 +77,15 @@ afv_native::api::atcClient::atcClient(std::string clientName, std::string resour
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 #endif
         }
-        });
+    });
 
     isInitialized = true;
-    LOG("ATCWRAPPER","Client Initialized");
+    LOG("ATCWRAPPER", "Client Initialized");
 }
 
 afv_native::api::atcClient::atcClient(char *clientName, char *resourcePath, char *baseURL):
     atcClient(std::string(clientName), std::string(resourcePath), std::string(baseURL)) {
-        LOG("ATCWRAPPER","STUB: Creating client named: %s resource: %s baseURL: %s",clientName,resourcePath,baseURL);
+    LOG("ATCWRAPPER", "STUB: Creating client named: %s resource: %s baseURL: %s", clientName, resourcePath, baseURL);
 }
 
 afv_native::api::atcClient::~atcClient() {

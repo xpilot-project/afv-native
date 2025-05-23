@@ -33,6 +33,7 @@ namespace afv_native {
 
 namespace afv_native::api {
     AFV_NATIVE_API void setLogger(afv_native::modern_log_fn gLogger);
+    AFV_NATIVE_API void setLogFilePath(std::string path);
 
     struct AFV_NATIVE_API AudioInterface {
         std::string id;

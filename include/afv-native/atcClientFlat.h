@@ -22,7 +22,7 @@ typedef void (*AudioInterfaceNativeCallback)(char *id, char *name, bool isDefaul
 
 extern "C" {
 
-    AFV_NATIVE_API ATCClientHandle ATCClient_Create(char *clientName, char *resourcePath, char *baseURL);
+    AFV_NATIVE_API ATCClientHandle ATCClient_Create(char *clientName, char *resourcePath, char *baseURL, char *logFilePath);
     AFV_NATIVE_API void ATCClient_Destroy(ATCClientHandle handle);
     AFV_NATIVE_API bool ATCClient_IsInitialized(ATCClientHandle handle);
     AFV_NATIVE_API void ATCClient_SetCredentials(ATCClientHandle handle, char *username, char *password);
