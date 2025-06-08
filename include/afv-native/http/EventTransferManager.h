@@ -34,9 +34,15 @@
 #ifndef AFV_NATIVE_EVENTTRANSFERMANAGER_H
 #define AFV_NATIVE_EVENTTRANSFERMANAGER_H
 
+#include "afv-native/Log.h"
 #include "afv-native/http/TransferManager.h"
+#include <atomic>
+#include <chrono>
 #include <curl/curl.h>
 #include <event2/event.h>
+#include <memory>
+#include <mutex>
+#include <thread>
 #include <unordered_set>
 
 namespace afv_native { namespace http {
@@ -48,26 +54,35 @@ namespace afv_native { namespace http {
       private:
         struct SocketInfo {
             struct event *ev;
+            bool          isValid;
 
-            SocketInfo(): ev(nullptr) {
+            SocketInfo(): ev(nullptr), isValid(true) {
             }
+
+            ~SocketInfo() {
+                if (ev != nullptr) {
+                    event_del(ev);
+                    event_free(ev);
+                    ev = nullptr;
+                }
+            }
+
+            SocketInfo(const SocketInfo &)            = delete;
+            SocketInfo &operator=(const SocketInfo &) = delete;
         };
 
-        struct event *mTimerEvent;
+        struct event     *mTimerEvent;
+        std::atomic<bool> mIsShuttingDown;
+        std::mutex        mSocketsMutex;
 
         static void evSocketCallback(evutil_socket_t fd, short events, void *arg);
-
         static void evTimerCallback(evutil_socket_t fd, short events, void *arg);
-
         int socketCallback(CURL *easy, curl_socket_t s, int what, void *socketp);
-
         static int curlSocketCallback(CURL *easy, curl_socket_t s, int what, void *userp, void *socketp);
-
         int timerCallback(CURLM *multi, long timeout_ms);
-
         static int curlTimerCallback(CURLM *multi, long timeout_ms, void *userp);
-
-        std::unordered_set<SocketInfo *> mWatchedSockets;
+        std::unordered_set<std::shared_ptr<SocketInfo>> mWatchedSockets;
+        std::unordered_map<SocketInfo *, std::shared_ptr<SocketInfo>> mSocketPointers;
 
       protected:
         struct event_base *mEvBase;
@@ -77,12 +92,10 @@ namespace afv_native { namespace http {
 
         ~EventTransferManager() override;
 
-        /** Process any outstanding events without blocking.
-         *
-         * This is actually a no-op with ETM as all the processing is driven
-         * by libevent instead.
-         */
         void process() override;
+        void shutdown();
+
+        void clearPendingTransfers();
     };
 }} // namespace afv_native::http
 

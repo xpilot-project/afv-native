@@ -36,16 +36,17 @@
 
 #include <curl/curl.h>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 namespace afv_native { namespace http {
 
     class Request;
 
-    /** TransferManager manages all of the running HTTP/HTTPS transfers, making sure
-     * completion notifications get fired, etc - and generally keeping things
-     * running without blocking the thread.  It also keeps SSL session and
-     * cookie data to share between requests.
+    /** TransferManager manages all of the running HTTP/HTTPS transfers, making
+     * sure completion notifications get fired, etc - and generally keeping
+     * things running without blocking the thread.  It also keeps SSL session
+     * and cookie data to share between requests.
      */
     class TransferManager {
       protected:
@@ -54,9 +55,11 @@ namespace afv_native { namespace http {
 
         std::unordered_map<CURL *, Request *> mPendingTransfers;
 
-        /** processPendingMultiEvents triggers a reconcilation of any outstanding
-         * completion notifications from curl and notifies the request objects
-         * that their transfers are finished.
+        std::recursive_mutex mMutex;
+
+        /** processPendingMultiEvents triggers a reconcilation of any
+         * outstanding completion notifications from curl and notifies the
+         * request objects that their transfers are finished.
          */
         void processPendingMultiEvents();
 
@@ -96,5 +99,5 @@ namespace afv_native { namespace http {
          */
         CURLM *getCurlMultiHandle() const;
     };
-}}     // namespace afv_native::http
+}} // namespace afv_native::http
 #endif // AFV_NATIVE_TRANSFERMANAGER_H
