@@ -19,9 +19,11 @@ typedef struct ATCClientHandle_ *ATCClientHandle;
 typedef void (*CharStarCallback)(const char *);
 typedef void (*AudioApisCallback)(unsigned int id, const char *);
 typedef void (*AudioInterfaceNativeCallback)(char *id, char *name, bool isDefault);
+typedef void (*LogFunction)(const char *subsystem, const char *file, int line, const char *lineOut);
 
 extern "C" {
 
+    AFV_NATIVE_API void ATCClient_SetLogFunction(LogFunction func);
     AFV_NATIVE_API ATCClientHandle ATCClient_Create(char *clientName, char *resourcePath, char *baseURL, char *logFilePath);
     AFV_NATIVE_API void ATCClient_Destroy(ATCClientHandle handle);
     AFV_NATIVE_API bool ATCClient_IsInitialized(ATCClientHandle handle);

@@ -19,8 +19,12 @@ struct ATCClientHandle_ {
     }
 };
 
+AFV_NATIVE_API void ATCClient_SetLogFunction(LogFunction func) {
+    afv_native::setLegacyLogger(func);
+}
+
 AFV_NATIVE_API ATCClientHandle ATCClient_Create(char *clientName, char *resourcePath, char *baseURL, char *logFilePath) {
-       return new ATCClientHandle_(clientName, resourcePath, baseURL, logFilePath);
+    return new ATCClientHandle_(clientName, resourcePath, baseURL, logFilePath);
 }
 
 AFV_NATIVE_API void ATCClient_Destroy(ATCClientHandle handle) {
