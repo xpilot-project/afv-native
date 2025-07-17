@@ -13,3 +13,4 @@ afv-native-testclient/
 afv_native.h
 atcClientWrapper_edit.h
 afv.log
+/.idea
