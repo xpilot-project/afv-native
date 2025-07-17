@@ -20,6 +20,28 @@ if (DEFINED CMAKE_BUILD_ARM64_LINUX)
 	set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(WIN32)
+	add_compile_options(/EHsc)
+	set(CMAKE_CXX_EXTENSIONS OFF)
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT")
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+	elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MTd")
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
+	endif()
+
+	# Force static triplet and linkage
+	set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Vcpkg triplet" FORCE)
+	set(VCPKG_CRT_LINKAGE "static" CACHE STRING "CRT linkage" FORCE)
+	set(VCPKG_LIBRARY_LINKAGE "static" CACHE STRING "Library linkage" FORCE)
+
+	# Set VCPKG_BUILD_TYPE only if single-config generator
+	if(CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR MATCHES "Makefiles")
+		set(VCPKG_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING "vcpkg build type" FORCE)
+	endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
@@ -236,7 +258,7 @@ endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT DEFINED AFV_STATIC)
 	add_custom_command(TARGET afv_native POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_SOURCE_DIR}
-		python3 ${CMAKE_CURRENT_SOURCE_DIR}/compile_licenses.py
+		python ${CMAKE_CURRENT_SOURCE_DIR}/compile_licenses.py
 		COMMENT "Running compile_licenses.py"
 	)
 endif()
